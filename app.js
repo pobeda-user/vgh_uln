@@ -17,6 +17,7 @@ const barcodeNotScanningDetailsEl = document.getElementById('barcodeNotScanningD
 const calcSgBtn = document.getElementById('calcSgBtn');
 const sgPercentEl = document.getElementById('sgPercent');
 const expiryDateOutEl = document.getElementById('expiryDateOut');
+const toastHostEl = document.getElementById('toastHost');
 
 const CONFIG = {
   // For GitHub Pages (static hosting), submit directly to Google Apps Script Web App.
@@ -27,6 +28,25 @@ const CONFIG = {
 function setStatus(text, { error = false } = {}) {
   statusEl.textContent = text;
   statusEl.classList.toggle('error', error);
+}
+
+function toast_(message, { type = 'info', timeoutMs = 3800 } = {}) {
+  if (!toastHostEl) {
+    if (type === 'error') setStatus(message, { error: true });
+    else setStatus(message);
+    return;
+  }
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = String(message || '');
+  toastHostEl.appendChild(el);
+  const remove = () => {
+    if (!el.isConnected) return;
+    el.classList.add('out');
+    setTimeout(() => el.remove(), 220);
+  };
+  el.addEventListener('click', remove);
+  setTimeout(remove, timeoutMs);
 }
 
 function updateOffline() {
@@ -77,7 +97,12 @@ function parseIntStrict(value) {
 
 document.querySelectorAll('[data-digits-only="true"]').forEach((el) => {
   el.addEventListener('input', () => {
-    el.value = sanitizeDigitsOnly(el.value);
+    const before = String(el.value || '');
+    const after = sanitizeDigitsOnly(before);
+    if (before !== after && (el.name === 'd_cm' || el.name === 'w_cm' || el.name === 'h_cm')) {
+      toast_('Длина/Ширина/Высота: вводите только цифры (без точек и запятых).', { type: 'warning' });
+    }
+    el.value = after;
   });
 });
 
@@ -195,7 +220,7 @@ calcSgBtn?.addEventListener('click', () => {
   const sgDays = parseIntStrict(fd.get('sg_days')) ?? null;
   const pct = computeSgPercent_({ mfgDate, expiryDate: '', shelfLifeDays: sgDays });
   if (pct == null) {
-    setStatus('Для расчёта СГ% укажите дату изготовления и срок годности (дней).', { error: true });
+    toast_('Для расчёта СГ% укажите дату изготовления и срок годности (дней).', { type: 'error' });
     return;
   }
   sgPercentEl.value = pct.toFixed(1);
@@ -212,7 +237,7 @@ calcSgBtn?.addEventListener('click', () => {
       expiryDateOutEl.value = `${dd}.${mm}.${yyyy}`;
     }
   }
-  setStatus('СГ% рассчитан.');
+  toast_('СГ% рассчитан.', { type: 'success' });
 });
 
 let deferredPrompt = null;
@@ -429,7 +454,7 @@ if ('serviceWorker' in navigator) {
 
 formEl.addEventListener('submit', async (e) => {
   e.preventDefault();
-  setStatus('Отправка...');
+  toast_('Отправка...', { type: 'info', timeoutMs: 1600 });
   submitBtn.disabled = true;
 
   try {
@@ -439,16 +464,16 @@ formEl.addEventListener('submit', async (e) => {
 
     const fd = new FormData(formEl);
 
-    const dCm = parseNumber(fd.get('d_cm'));
-    const wCm = parseNumber(fd.get('w_cm'));
-    const hCm = parseNumber(fd.get('h_cm'));
+    const dCm = parseIntStrict(fd.get('d_cm'));
+    const wCm = parseIntStrict(fd.get('w_cm'));
+    const hCm = parseIntStrict(fd.get('h_cm'));
     const weightKg = parseDigitsOnlyNumber(fd.get('weight_kg'));
     const sgDays = parseIntStrict(fd.get('sg_days'));
     const tpr2 = getTpr2Value_();
     const tpr3 = parseIntStrict(fd.get('tpr3'));
     const tpr4 = parseIntStrict(fd.get('tpr4'));
 
-    if (dCm === null || wCm === null || hCm === null) throw new Error('Длина/Ширина/Высота должны быть числами.');
+    if (dCm === null || wCm === null || hCm === null) throw new Error('Заполните Длина/Ширина/Высота (только цифры).');
     if (weightKg === null) throw new Error('Вес должен содержать только цифры.');
     if (sgDays === null) throw new Error('СГ (дней) должен быть числом.');
     if (tpr3 === null || tpr4 === null) throw new Error('ТПР3 и ТПР4 обязательны и должны быть числами.');
@@ -517,7 +542,7 @@ formEl.addEventListener('submit', async (e) => {
 
     if (!navigator.onLine) {
       await queueAdd_(payload);
-      setStatus('Нет интернета. Заявка добавлена в очередь.');
+      toast_('Нет интернета. Заявка добавлена в очередь.', { type: 'warning', timeoutMs: 4200 });
       return;
     }
 
@@ -526,7 +551,7 @@ formEl.addEventListener('submit', async (e) => {
     } catch (err) {
       if (isNetworkError_(err)) {
         await queueAdd_(payload);
-        setStatus('Проблема с сетью. Заявка добавлена в очередь.');
+        toast_('Проблема с сетью. Заявка добавлена в очередь.', { type: 'warning', timeoutMs: 4200 });
         return;
       }
       throw err;
@@ -537,13 +562,13 @@ formEl.addEventListener('submit', async (e) => {
     syncBlockPhotoVisibility();
     syncProblemDetails();
     await renderQueue_();
-    setStatus('Отправлено.');
+    toast_('Отправлено.', { type: 'success' });
   } catch (err) {
     const msg = err instanceof Error
       ? `${err.message}${err.stack ? `\n${err.stack}` : ''}`
       : String(err);
     console.error('SUBMIT_ERROR', err);
-    setStatus(msg, { error: true });
+    toast_(msg, { type: 'error', timeoutMs: 6000 });
   } finally {
     submitBtn.disabled = false;
   }

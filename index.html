@@ -11,6 +11,7 @@
 <body>
   <main class="container">
     <div id="netIndicator" class="netIndicator" aria-label="Статус сети" title="Статус сети"></div>
+    <div id="toastHost" class="toastHost" aria-live="polite" aria-atomic="true"></div>
     <header class="header">
       <div class="brand">
         <div class="logo" aria-hidden="true">
@@ -68,17 +69,17 @@
 
           <label class="field hlInput">
             <span>📏 Длина (см)</span>
-            <input name="d_cm" type="text" inputmode="decimal" data-number-only="true" required />
+            <input name="d_cm" type="text" inputmode="numeric" data-digits-only="true" required />
           </label>
 
           <label class="field hlInput">
             <span>📏 Ширина (см)</span>
-            <input name="w_cm" type="text" inputmode="decimal" data-number-only="true" required />
+            <input name="w_cm" type="text" inputmode="numeric" data-digits-only="true" required />
           </label>
 
           <label class="field hlInput">
             <span>📏 Высота (см)</span>
-            <input name="h_cm" type="text" inputmode="decimal" data-number-only="true" required />
+            <input name="h_cm" type="text" inputmode="numeric" data-digits-only="true" required />
           </label>
 
           <label class="field hlInput">
