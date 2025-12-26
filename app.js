@@ -10,6 +10,7 @@ const queueEmptyEl = document.getElementById('queueEmpty');
 const flushQueueBtn = document.getElementById('flushQueueBtn');
 const chooseProblemBtn = document.getElementById('chooseProblemBtn');
 const problemGridEl = document.getElementById('problemGrid');
+const clearCacheBtn = document.getElementById('clearCacheBtn');
 const photoBarcodeBlockEl = document.getElementById('photoBarcodeBlock');
 const photoBarcodeBlockWrapEl = document.getElementById('photoBarcodeBlockWrap');
 const attachmentsEl = document.getElementById('boxAttachments');
@@ -562,11 +563,55 @@ renderQueue_();
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', async () => {
     try {
-      await navigator.serviceWorker.register('./sw.js');
+      const reg = await navigator.serviceWorker.register('./sw.js');
+
+      // If there's an updated SW waiting, activate it immediately
+      if (reg.waiting) {
+        reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+      }
+
+      reg.addEventListener('updatefound', () => {
+        const nw = reg.installing;
+        if (!nw) return;
+        nw.addEventListener('statechange', () => {
+          if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+            nw.postMessage({ type: 'SKIP_WAITING' });
+          }
+        });
+      });
+
+      // Reload when new SW takes control
+      let refreshing = false;
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (refreshing) return;
+        refreshing = true;
+        setTimeout(() => window.location.reload(), 150);
+      });
     } catch (_) {
     }
   });
 }
+
+async function hardReload_() {
+  try {
+    if ('caches' in window) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map((k) => caches.delete(k)));
+    }
+  } catch (_) {}
+  try {
+    if ('serviceWorker' in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map((r) => r.unregister()));
+    }
+  } catch (_) {}
+  window.location.reload();
+}
+
+clearCacheBtn?.addEventListener('click', async () => {
+  toast_('Сброс кеша...', { type: 'warning', timeoutMs: 1600 });
+  await hardReload_();
+});
 
 formEl.addEventListener('submit', async (e) => {
   e.preventDefault();
