@@ -270,19 +270,74 @@ calcSgBtn?.addEventListener('click', () => {
 });
 
 let deferredPrompt = null;
+function isStandalone_() {
+  return Boolean(
+    (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
+    // iOS Safari
+    (window.navigator && window.navigator.standalone)
+  );
+}
+
+function isIos_() {
+  const ua = String(navigator.userAgent || '');
+  return /iPad|iPhone|iPod/i.test(ua);
+}
+
+function isMobile_() {
+  const ua = String(navigator.userAgent || '');
+  return /Android|iPhone|iPad|iPod/i.test(ua);
+}
+
+function syncInstallUi_() {
+  if (!installBtn) return;
+  if (isStandalone_()) {
+    installBtn.hidden = true;
+    return;
+  }
+  // On mobile we show the button even if beforeinstallprompt isn't available (iOS)
+  installBtn.hidden = !isMobile_();
+}
+
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
   deferredPrompt = e;
-  installBtn.hidden = false;
+  syncInstallUi_();
 });
 
 installBtn.addEventListener('click', async () => {
-  if (!deferredPrompt) return;
-  deferredPrompt.prompt();
-  await deferredPrompt.userChoice;
-  deferredPrompt = null;
-  installBtn.hidden = true;
+  if (isStandalone_()) {
+    installBtn.hidden = true;
+    return;
+  }
+
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    const choice = await deferredPrompt.userChoice;
+    deferredPrompt = null;
+    if (choice && choice.outcome === 'accepted') {
+      toast_('Установка запущена.', { type: 'success' });
+      installBtn.hidden = true;
+      return;
+    }
+    toast_('Установка отменена. Кнопка останется доступной.', { type: 'warning' });
+    syncInstallUi_();
+    return;
+  }
+
+  if (isIos_()) {
+    toast_('iPhone/iPad: нажмите «Поделиться» → «На экран Домой» для установки.', { type: 'info', timeoutMs: 6000 });
+    return;
+  }
+
+  toast_('Установка недоступна сейчас. Откройте сайт в Chrome и попробуйте снова.', { type: 'warning', timeoutMs: 5200 });
 });
+
+window.addEventListener('appinstalled', () => {
+  toast_('Приложение установлено.', { type: 'success' });
+  if (installBtn) installBtn.hidden = true;
+});
+
+syncInstallUi_();
 
 window.addEventListener('online', updateOffline);
 window.addEventListener('offline', updateOffline);
