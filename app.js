@@ -72,10 +72,24 @@ function sanitizeNumberOnly(value) {
   return v.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
 }
 
+function sanitizeDotDecimalOnly(value) {
+  const v = String(value ?? '');
+  // only digits and a single dot
+  return v.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+}
+
 function parseDigitsOnlyNumber(value) {
   const v = String(value ?? '').trim();
   if (!v) return null;
   if (!/^\d+$/.test(v)) return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
+function parseDotDecimalNumber(value) {
+  const v = String(value ?? '').trim();
+  if (!v) return null;
+  if (!/^\d+(?:\.\d+)?$/.test(v)) return null;
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
 }
@@ -101,6 +115,21 @@ document.querySelectorAll('[data-digits-only="true"]').forEach((el) => {
     const after = sanitizeDigitsOnly(before);
     if (before !== after && (el.name === 'd_cm' || el.name === 'w_cm' || el.name === 'h_cm')) {
       toast_('Длина/Ширина/Высота: вводите только цифры (без точек и запятых).', { type: 'warning' });
+    }
+    el.value = after;
+  });
+});
+
+// weight_kg: allow decimals with DOT only
+document.querySelectorAll('input[name="weight_kg"]').forEach((el) => {
+  el.addEventListener('input', () => {
+    const before = String(el.value || '');
+    if (/,/.test(before)) {
+      toast_('Вес: используйте точку, например 1.5 (запятая запрещена).', { type: 'warning' });
+    }
+    const after = sanitizeDotDecimalOnly(before);
+    if (before !== after && /[^0-9.,]/.test(before)) {
+      toast_('Вес: можно вводить только цифры и точку.', { type: 'warning' });
     }
     el.value = after;
   });
@@ -467,14 +496,14 @@ formEl.addEventListener('submit', async (e) => {
     const dCm = parseIntStrict(fd.get('d_cm'));
     const wCm = parseIntStrict(fd.get('w_cm'));
     const hCm = parseIntStrict(fd.get('h_cm'));
-    const weightKg = parseDigitsOnlyNumber(fd.get('weight_kg'));
+    const weightKg = parseDotDecimalNumber(fd.get('weight_kg'));
     const sgDays = parseIntStrict(fd.get('sg_days'));
     const tpr2 = getTpr2Value_();
     const tpr3 = parseIntStrict(fd.get('tpr3'));
     const tpr4 = parseIntStrict(fd.get('tpr4'));
 
     if (dCm === null || wCm === null || hCm === null) throw new Error('Заполните Длина/Ширина/Высота (только цифры).');
-    if (weightKg === null) throw new Error('Вес должен содержать только цифры.');
+    if (weightKg === null) throw new Error('Вес должен быть числом, можно с точкой (например 1.5).');
     if (sgDays === null) throw new Error('СГ (дней) должен быть числом.');
     if (tpr3 === null || tpr4 === null) throw new Error('ТПР3 и ТПР4 обязательны и должны быть числами.');
 
