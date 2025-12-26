@@ -475,29 +475,48 @@ function isNetworkError_(err) {
 }
 
 async function sendPayload_(payload) {
-  const res = await fetch(CONFIG.submitUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
-    body: JSON.stringify(payload)
-  });
-
-  const responseText = await res.text().catch(() => '');
-  if (!res.ok) {
-    throw new Error(`HTTP ${res.status} ${res.statusText}\n${responseText}`.trim());
-  }
-  let data = null;
+  const body = JSON.stringify(payload);
   try {
-    data = responseText ? JSON.parse(responseText) : null;
-  } catch (_) {
-    data = null;
+    const res = await fetch(CONFIG.submitUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
+      body
+    });
+
+    const responseText = await res.text().catch(() => '');
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status} ${res.statusText}\n${responseText}`.trim());
+    }
+    let data = null;
+    try {
+      data = responseText ? JSON.parse(responseText) : null;
+    } catch (_) {
+      data = null;
+    }
+    if (data && data.ok === false && data.error) {
+      throw new Error(String(data.error));
+    }
+    if (!data || data.ok !== true) {
+      throw new Error(`Ответ сервера не JSON/ok=true\n${responseText}`.trim());
+    }
+    return data;
+  } catch (err) {
+    // GitHub Pages -> script.google.com часто блокируется CORS. В этом случае
+    // отправляем "no-cors" (запрос уходит, но ответ недоступен).
+    if (err instanceof TypeError) {
+      const res2 = await fetch(CONFIG.submitUrl, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
+        body
+      });
+      // no-cors returns opaque response, we can't verify, but request is sent.
+      if (res2 && res2.type === 'opaque') {
+        return { ok: true, opaque: true };
+      }
+    }
+    throw err;
   }
-  if (data && data.ok === false && data.error) {
-    throw new Error(String(data.error));
-  }
-  if (!data || data.ok !== true) {
-    throw new Error(`Ответ сервера не JSON/ok=true\n${responseText}`.trim());
-  }
-  return data;
 }
 
 async function flushQueue_() {
