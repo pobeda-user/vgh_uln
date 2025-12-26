@@ -19,6 +19,8 @@ const sgPercentEl = document.getElementById('sgPercent');
 const expiryDateOutEl = document.getElementById('expiryDateOut');
 const toastHostEl = document.getElementById('toastHost');
 
+let currentRequestId_ = '';
+
 const CONFIG = {
   // For GitHub Pages (static hosting), submit directly to Google Apps Script Web App.
   // Use Content-Type: text/plain to avoid CORS preflight.
@@ -294,8 +296,8 @@ function syncInstallUi_() {
     installBtn.hidden = true;
     return;
   }
-  // On mobile we show the button even if beforeinstallprompt isn't available (iOS)
-  installBtn.hidden = !isMobile_();
+  // Show on both desktop and mobile; hide only when already installed (standalone)
+  installBtn.hidden = false;
 }
 
 window.addEventListener('beforeinstallprompt', (e) => {
@@ -374,6 +376,13 @@ async function withStore_(mode, fn) {
 }
 
 async function queueAdd_(payload) {
+  // Deduplicate by requestId (avoid multiple clicks when offline)
+  const requestId = payload && payload.requestId ? String(payload.requestId) : '';
+  if (requestId) {
+    const existing = await queueGetAll_().catch(() => []);
+    const has = existing.some((x) => x && x.payload && String(x.payload.requestId || '') === requestId);
+    if (has) return;
+  }
   const item = {
     createdAt: new Date().toISOString(),
     payload,
@@ -412,6 +421,22 @@ function escapeHtml_(s) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
+}
+
+function createRequestId_() {
+  if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+    return window.crypto.randomUUID();
+  }
+  return `${Date.now()}_${Math.random().toString(16).slice(2)}`;
+}
+
+function getOrCreateRequestId_() {
+  if (!currentRequestId_) currentRequestId_ = createRequestId_();
+  return currentRequestId_;
+}
+
+function resetRequestId_() {
+  currentRequestId_ = '';
 }
 
 async function renderQueue_() {
@@ -476,7 +501,11 @@ async function sendPayload_(payload) {
 
 async function flushQueue_() {
   if (!navigator.onLine) return;
+  if (flushQueue_.inProgress) return;
+  flushQueue_.inProgress = true;
+  try {
   const items = await queueGetAll_().catch(() => []);
+  if (items.length) toast_('Очередь отправляется...', { type: 'info', timeoutMs: 2200 });
   for (const item of items) {
     try {
       await sendPayload_(item.payload);
@@ -487,6 +516,9 @@ async function flushQueue_() {
       await queueUpdate_(item);
       if (isNetworkError_(err)) return;
     }
+  }
+  } finally {
+    flushQueue_.inProgress = false;
   }
 }
 
@@ -548,6 +580,8 @@ formEl.addEventListener('submit', async (e) => {
 
     const fd = new FormData(formEl);
 
+    const requestId = getOrCreateRequestId_();
+
     const dCm = parseIntStrict(fd.get('d_cm'));
     const wCm = parseIntStrict(fd.get('w_cm'));
     const hCm = parseIntStrict(fd.get('h_cm'));
@@ -565,6 +599,7 @@ formEl.addEventListener('submit', async (e) => {
     const sgPercent = parseNumber(fd.get('sg_percent'));
 
     const payload = {
+      requestId,
       clientTs: new Date().toISOString(),
       supplier: String(fd.get('supplier') || '').trim(),
       productType: String(fd.get('product_type') || '').trim(),
@@ -627,6 +662,14 @@ formEl.addEventListener('submit', async (e) => {
     if (!navigator.onLine) {
       await queueAdd_(payload);
       toast_('Нет интернета. Заявка добавлена в очередь.', { type: 'warning', timeoutMs: 4200 });
+
+      // prevent multiple manual submits of the same data
+      formEl.reset();
+      resetRequestId_();
+      filesHintEl.textContent = '';
+      syncBlockPhotoVisibility();
+      syncProblemDetails();
+      await renderQueue_();
       return;
     }
 
@@ -636,12 +679,20 @@ formEl.addEventListener('submit', async (e) => {
       if (isNetworkError_(err)) {
         await queueAdd_(payload);
         toast_('Проблема с сетью. Заявка добавлена в очередь.', { type: 'warning', timeoutMs: 4200 });
+
+        formEl.reset();
+        resetRequestId_();
+        filesHintEl.textContent = '';
+        syncBlockPhotoVisibility();
+        syncProblemDetails();
+        await renderQueue_();
         return;
       }
       throw err;
     }
 
     formEl.reset();
+    resetRequestId_();
     filesHintEl.textContent = '';
     syncBlockPhotoVisibility();
     syncProblemDetails();
