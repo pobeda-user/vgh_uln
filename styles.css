@@ -93,5 +93,6 @@ button{background:linear-gradient(180deg,var(--orange),var(--orange2));color:#07
  .toast.error{border-color:rgba(227,6,19,.45);background:rgba(227,6,19,.10)}
  .toast.out{opacity:0;transform:translateY(-6px)}
 
- .clearCacheBtn{position:fixed;left:6px;bottom:6px;width:22px;height:22px;border-radius:10px;border:0;background:transparent;opacity:.02;z-index:1200;cursor:pointer}
- .clearCacheBtn:active{opacity:.12}
+ .clearCacheBtn{position:fixed;left:12px;top:12px;padding:10px 12px;border-radius:12px;border:1px solid rgba(2,6,23,.18);background:rgba(255,255,255,.92);color:#0f172a;font-weight:800;z-index:1200;cursor:pointer;box-shadow:0 16px 34px rgba(2,6,23,.12)}
+ .clearCacheBtn:hover{background:#ffffff}
+ .clearCacheBtn:active{transform:translateY(1px)}

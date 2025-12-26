@@ -502,18 +502,28 @@ async function sendPayload_(payload) {
     return data;
   } catch (err) {
     // GitHub Pages -> script.google.com часто блокируется CORS. В этом случае
-    // отправляем "no-cors" (запрос уходит, но ответ недоступен).
+    // используем sendBeacon (не требует CORS, ответа нет).
     if (err instanceof TypeError) {
-      const res2 = await fetch(CONFIG.submitUrl, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
-        body
-      });
-      // no-cors returns opaque response, we can't verify, but request is sent.
-      if (res2 && res2.type === 'opaque') {
-        return { ok: true, opaque: true };
-      }
+      try {
+        if (navigator && typeof navigator.sendBeacon === 'function') {
+          const blob = new Blob([body], { type: 'text/plain;charset=UTF-8' });
+          const ok = navigator.sendBeacon(CONFIG.submitUrl, blob);
+          if (ok) return { ok: true, beacon: true };
+        }
+      } catch (_) {}
+
+      // Secondary attempt: no-cors. Не считаем успехом, если браузер всё равно ошибся.
+      try {
+        const res2 = await fetch(CONFIG.submitUrl, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
+          body
+        });
+        if (res2 && res2.type === 'opaque') {
+          return { ok: true, opaque: true };
+        }
+      } catch (_) {}
     }
     throw err;
   }
