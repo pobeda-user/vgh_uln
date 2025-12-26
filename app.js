@@ -52,6 +52,14 @@ function sanitizeNumberOnly(value) {
   return v.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
 }
 
+function parseDigitsOnlyNumber(value) {
+  const v = String(value ?? '').trim();
+  if (!v) return null;
+  if (!/^\d+$/.test(v)) return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
 function parseNumber(value) {
   const v = String(value ?? '').trim().replace(/,/g, '.');
   if (!v) return null;
@@ -434,14 +442,14 @@ formEl.addEventListener('submit', async (e) => {
     const dCm = parseNumber(fd.get('d_cm'));
     const wCm = parseNumber(fd.get('w_cm'));
     const hCm = parseNumber(fd.get('h_cm'));
-    const weightKg = parseNumber(fd.get('weight_kg'));
+    const weightKg = parseDigitsOnlyNumber(fd.get('weight_kg'));
     const sgDays = parseIntStrict(fd.get('sg_days'));
     const tpr2 = getTpr2Value_();
     const tpr3 = parseIntStrict(fd.get('tpr3'));
     const tpr4 = parseIntStrict(fd.get('tpr4'));
 
-    if (dCm === null || wCm === null || hCm === null) throw new Error('Д/Ш/В должны быть числами.');
-    if (weightKg === null) throw new Error('Вес должен быть числом.');
+    if (dCm === null || wCm === null || hCm === null) throw new Error('Длина/Ширина/Высота должны быть числами.');
+    if (weightKg === null) throw new Error('Вес должен содержать только цифры.');
     if (sgDays === null) throw new Error('СГ (дней) должен быть числом.');
     if (tpr3 === null || tpr4 === null) throw new Error('ТПР3 и ТПР4 обязательны и должны быть числами.');
 

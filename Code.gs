@@ -499,7 +499,11 @@ function buildTelegramMessageFromSite_(data) {
   if (productType) lines.push('🏷️ Тип товара: ' + productType);
   if (lk) lines.push('🧾 ЛК: ' + lk);
   if (d != null && w != null && h != null && !isNaN(d) && !isNaN(w) && !isNaN(h)) {
-    lines.push('📏 Габариты (м): ' + [d, w, h].join(' x '));
+    lines.push('📏 Габариты (м):');
+    lines.push('Длина-Ширина-Высота');
+    lines.push('<b>' + d + '</b>');
+    lines.push('<b>' + w + '</b>');
+    lines.push('<b>' + h + '</b>');
   }
   if (weightKg != null && !isNaN(weightKg)) lines.push('⚖️ Вес: ' + weightKg + ' кг');
   if (tpr2 != null && !isNaN(tpr2) && tpr2 > 0) lines.push('🧊 ТПР2 (блок): ' + tpr2);
