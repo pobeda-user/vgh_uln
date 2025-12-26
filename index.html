@@ -40,6 +40,32 @@
             <input name="lk" type="text" inputmode="numeric" data-digits-only="true" required />
           </label>
 
+          <div class="field full">
+            <span>Тип товара</span>
+            <div class="typeGrid" role="radiogroup" aria-label="Тип товара">
+              <label class="typeBtn">
+                <input type="radio" name="product_type" value="dry" required />
+                <span class="typeText">Сухой</span>
+              </label>
+              <label class="typeBtn">
+                <input type="radio" name="product_type" value="fresh" />
+                <span class="typeText">ФРЕШ</span>
+              </label>
+              <label class="typeBtn">
+                <input type="radio" name="product_type" value="frov" />
+                <span class="typeText">ФРОВ</span>
+              </label>
+              <label class="typeBtn">
+                <input type="radio" name="product_type" value="frozen" />
+                <span class="typeText">Заморозка</span>
+              </label>
+              <label class="typeBtn">
+                <input type="radio" name="product_type" value="strong_alcohol" />
+                <span class="typeText">Крепкий алкоголь</span>
+              </label>
+            </div>
+          </div>
+
           <label class="field">
             <span>Д (см)</span>
             <input name="d_cm" type="text" inputmode="decimal" data-number-only="true" required />
@@ -65,17 +91,17 @@
             <input name="tpr2" type="text" inputmode="numeric" data-digits-only="true" />
           </label>
 
-          <label class="field">
+          <label class="field hlInput">
             <span>Коробка (шт) (тпр3)</span>
             <input name="tpr3" type="text" inputmode="numeric" data-digits-only="true" required />
           </label>
 
-          <label class="field">
+          <label class="field hlInput">
             <span>Паллет (уп) (тпр4)</span>
             <input name="tpr4" type="text" inputmode="numeric" data-digits-only="true" required />
           </label>
 
-          <label class="field">
+          <label class="field hlInput">
             <span>Срок годности (дней)</span>
             <input name="sg_days" type="text" inputmode="numeric" data-digits-only="true" required />
           </label>
@@ -83,7 +109,7 @@
           <div class="field full">
             <span>Расчёт СГ в % (остаток)</span>
             <div class="sgCalc">
-              <label class="field">
+              <label class="field hlInput">
                 <span>Дата изготовления</span>
                 <input name="mfg_date" type="date" />
               </label>
@@ -204,10 +230,13 @@
 
         <div class="actions">
           <button id="submitBtn" type="submit">Отправить</button>
-          <button id="installBtn" type="button" class="secondary" hidden>Установить</button>
         </div>
 
         <div id="status" class="status" aria-live="polite"></div>
+
+        <div class="actions">
+          <button id="installBtn" type="button" class="secondary" hidden>Установить приложение</button>
+        </div>
       </form>
     </section>
 

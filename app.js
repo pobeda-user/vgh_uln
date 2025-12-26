@@ -450,6 +450,7 @@ formEl.addEventListener('submit', async (e) => {
     const payload = {
       clientTs: new Date().toISOString(),
       supplier: String(fd.get('supplier') || '').trim(),
+      productType: String(fd.get('product_type') || '').trim(),
       lk: String(fd.get('lk') || '').trim(),
       d_m: dCm / 100,
       w_m: wCm / 100,

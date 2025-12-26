@@ -18,22 +18,24 @@ var messageCache = {};
 function doPost(e) {
   var logSh;
   var timestamp = new Date();
-  var isSiteRequest = false;
   var isSiteHint = false;
-  
+  var isSiteRequest = false;
+
   try {
-    // Сразу открываем лист для логирования
+    // Текстовый ответ для Telegram (быстрое подтверждение)
+    var telegramResponse = ContentService.createTextOutput('ok');
+    
+    // Открываем лог
     var ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
     logSh = ss.getSheetByName(CONFIG.SHEET_LOGS);
     
-    // Базовое логирование входящего запроса
     var postData = e.postData ? e.postData.contents : '';
     isSiteHint = postData && postData.indexOf('"clientTs"') !== -1;
     if (!postData) {
       if (logSh) {
         logSh.appendRow([timestamp, 'doPost', 'EMPTY_REQUEST', '', '', '']);
       }
-      return ContentService.createTextOutput('ok');
+      return telegramResponse;
     }
     
     var truncatedData = postData.length > 300 ? postData.substring(0, 300) + '...' : postData;
@@ -42,35 +44,57 @@ function doPost(e) {
         'Length: ' + postData.length + ' chars', truncatedData]);
     }
     
-    // Парсим данные
+    // Парсим и обрабатываем
     var update = JSON.parse(postData);
-    isSiteRequest = Boolean(update && update.clientTs);
 
+    // ===== PWA / SITE SUBMIT =====
+    isSiteRequest = Boolean(update && update.clientTs);
     if (isSiteRequest) {
+      // Важно: для PWA всегда возвращаем JSON
       return handlePwaSubmit_(update, logSh);
     }
-
-    return handleTelegramUpdate_(update, logSh, timestamp);
+    
+    // Проверяем на дубликаты
+    if (update && update.update_id != null) {
+      if (isDuplicateTelegramUpdate_(update.update_id)) {
+        if (logSh) {
+          logSh.appendRow([timestamp, 'doPost', 'DUPLICATE_UPDATE_SKIPPED', '', 
+            'update_id: ' + update.update_id, '']);
+        }
+        return telegramResponse; // ВАЖНО: все равно возвращаем ответ
+      }
+    }
+    
+    // Обработка в зависимости от типа
+    if (update && update.message) {
+      handleMessage_(update.message);
+    } else if (update && update.callback_query) {
+      handleCallbackQuery_(update.callback_query);
+    } else if (update && update.my_chat_member) {
+      // Просто логируем и ничего не делаем
+      var chatId = update.my_chat_member.chat ? update.my_chat_member.chat.id : '';
+      if (logSh) {
+        logSh.appendRow([timestamp, 'doPost', 'MY_CHAT_MEMBER', chatId, '', '']);
+      }
+    }
+    
+    return telegramResponse;
     
   } catch (error) {
-    // Обязательно логируем ошибки
+    // Логируем ошибку, но ВСЕГДА возвращаем ответ
     if (logSh) {
-      logSh.appendRow([new Date(), 'doPost', 'ERROR', '', 
+      logSh.appendRow([timestamp, 'doPost', 'ERROR', '', 
         error.toString(), error.stack || '']);
     } else {
-      Logger.log('doPost ERROR (no sheet): ' + error.toString());
+      Logger.log('doPost ERROR: ' + error.toString());
     }
 
     if (isSiteRequest || isSiteHint) {
       return json_({ ok: false, error: String(error && error.message ? error.message : error) });
     }
+
+    return ContentService.createTextOutput('ok');
   }
-  
-  // Фолбэк: всегда возвращаем ответ, даже при ошибках
-  if (isSiteRequest || isSiteHint) {
-    return json_({ ok: false, error: 'UNKNOWN_ERROR' });
-  }
-  return ContentService.createTextOutput('ok');
 }
 
 function handlePwaSubmit_(update, logSh) {
@@ -299,6 +323,23 @@ function handleSiteSubmit_(data) {
   return json_({ ok: true });
 }
 
+function safeFolderName_(name) {
+  var s = String(name || '').trim();
+  if (!s) return '';
+  s = s.replace(/[\\/:*?"<>|\r\n\t]/g, ' ');
+  s = s.replace(/\s+/g, ' ').trim();
+  if (s.length > 100) s = s.substring(0, 100).trim();
+  return s;
+}
+
+function getOrCreateSubfolder_(parentFolder, folderName) {
+  var name = safeFolderName_(folderName);
+  if (!name) name = 'без поставщика';
+  var it = parentFolder.getFoldersByName(name);
+  if (it.hasNext()) return it.next();
+  return parentFolder.createFolder(name);
+}
+
 function logToSheet_(chatId, text) {
   try {
     var ss2 = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
@@ -317,6 +358,7 @@ function buildMainRow_(data, uploaded) {
   return [
     ts,
     String(data.supplier || ''),
+    String(data.productType || ''),
     String(data.lk || ''),
     Number(data.d_m || 0),
     Number(data.w_m || 0),
@@ -362,95 +404,6 @@ function ensureSheet_(ss3, sheetName, header) {
   }
 }
 
-function logEvent_(source, action, summaryObj, payloadObj) {
-  var cfg2 = getConfig_();
-  var ss4 = SpreadsheetApp.openById(cfg2.SPREADSHEET_ID);
-  var sh4 = ss4.getSheetByName(cfg2.SHEET_LOGS);
-  if (!sh4) return;
-
-  var chatId = '';
-  if (summaryObj && summaryObj.chatId) chatId = String(summaryObj.chatId);
-
-  sh4.appendRow([
-    new Date(),
-    String(source || ''),
-    String(action || ''),
-    chatId,
-    safeJsonStringify_(summaryObj || {}),
-    payloadObj ? safeJsonStringify_(payloadObj) : ''
-  ]);
-}
-
-function logFunctionInfo_(funcName, message, ctx) {
-  logFunction_('INFO', funcName, message, null, ctx);
-}
-
-function logFunctionWarn_(funcName, message, ctx) {
-  logFunction_('WARN', funcName, message, null, ctx);
-}
-
-function logFunctionError_(funcName, err, ctx) {
-  logFunction_('ERROR', funcName, '', err, ctx);
-}
-
-function logFunction_(level, funcName, message, err, ctx) {
-  try {
-    var cfg3 = getConfig_();
-    var ss5 = SpreadsheetApp.openById(cfg3.SPREADSHEET_ID);
-    var sh5 = ss5.getSheetByName(cfg3.SHEET_FUNC_LOGS);
-    if (!sh5) return;
-
-    var errorText = err ? (err && err.message ? err.message : String(err)) : '';
-    var stack = '';
-    try {
-      if (err && err.stack) stack = String(err.stack);
-    } catch (_) {}
-
-    sh5.appendRow([
-      new Date(),
-      String(level || ''),
-      String(funcName || ''),
-      String(message || ''),
-      errorText,
-      stack,
-      safeJsonStringify_(ctx || {})
-    ]);
-  } catch (_) {}
-}
-
-function getConfig_() {
-  var props2 = PropertiesService.getScriptProperties();
-  var out = {};
-  for (var k in CONFIG) out[k] = CONFIG[k];
-
-  var spreadsheetId = props2.getProperty('SPREADSHEET_ID');
-  if (spreadsheetId) out.SPREADSHEET_ID = spreadsheetId;
-
-  var folderId = props2.getProperty('DRIVE_FOLDER_ID');
-  if (folderId) out.DRIVE_FOLDER_ID = folderId;
-
-  var botUsername = props2.getProperty('BOT_USERNAME');
-  if (botUsername) out.BOT_USERNAME = botUsername;
-
-  var sheetMain = props2.getProperty('SHEET_MAIN');
-  if (sheetMain) out.SHEET_MAIN = sheetMain;
-
-  return out;
-}
-
-function safeJsonStringify_(obj) {
-  try {
-    return JSON.stringify(obj);
-  } catch (_) {
-    return String(obj);
-  }
-}
-
-function json_(obj) {
-  return ContentService.createTextOutput(JSON.stringify(obj))
-    .setMimeType(ContentService.MimeType.JSON);
-}
-
 function ensureSheets_() {
   var ss6 = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
   ensureSheet_(ss6, CONFIG.SHEET_LOGS, ['ts', 'source', 'action', 'chatId', 'summary', 'payload']);
@@ -460,24 +413,25 @@ function ensureSheets_() {
 
 function ensureHeaderMain_(sh6) {
   var header = [
-    'ts',
-    'supplier',
-    'lk',
-    'd_m',
-    'w_m',
-    'h_m',
-    'tpr2_block_qty',
-    'tpr3_box_qty',
-    'tpr4_pallet_up',
-    'sg_days',
-    'sg_percent',
-    'mfg_date',
-    'expiry_date',
-    'weight_kg',
-    'problem',
-    'problem_details',
-    'comment',
-    'files_json'
+    'Дата/время',
+    'Поставщик',
+    'Тип товара',
+    'ЛК товара',
+    'Д (м)',
+    'Ш (м)',
+    'В (м)',
+    'ТПР2 блок (шт)',
+    'ТПР3 коробка (шт)',
+    'ТПР4 паллет (уп)',
+    'СГ (дней)',
+    'СГ (%)',
+    'Дата изготовления',
+    'Годен до',
+    'Вес (кг)',
+    'Проблема',
+    'Детали проблемы',
+    'Комментарий',
+    'Файлы'
   ];
 
   if (sh6.getLastRow() === 0) {
@@ -513,9 +467,20 @@ function resolveProblemDetails_(data) {
   return '';
 }
 
+function productTypeLabel_(code) {
+  var c = String(code || '').trim();
+  if (c === 'dry') return 'Сухой';
+  if (c === 'fresh') return 'ФРЕШ';
+  if (c === 'frov') return 'ФРОВ';
+  if (c === 'frozen') return 'Заморозка';
+  if (c === 'strong_alcohol') return 'Крепкий алкоголь';
+  return c;
+}
+
 function buildTelegramMessageFromSite_(data) {
   var lines = [];
   var supplier = String(data && data.supplier ? data.supplier : '').trim();
+  var productType = productTypeLabel_(data && data.productType ? data.productType : '');
   var lk = String(data && data.lk ? data.lk : '').trim();
   var d = data && data.d_m != null ? Number(data.d_m) : null;
   var w = data && data.w_m != null ? Number(data.w_m) : null;
@@ -531,6 +496,7 @@ function buildTelegramMessageFromSite_(data) {
 
   lines.push('📝 Новая заявка');
   if (supplier) lines.push('🏭 Поставщик: ' + supplier);
+  if (productType) lines.push('🏷️ Тип товара: ' + productType);
   if (lk) lines.push('🧾 ЛК: ' + lk);
   if (d != null && w != null && h != null && !isNaN(d) && !isNaN(w) && !isNaN(h)) {
     lines.push('📏 Габариты (м): ' + [d, w, h].join(' x '));
@@ -538,13 +504,21 @@ function buildTelegramMessageFromSite_(data) {
   if (weightKg != null && !isNaN(weightKg)) lines.push('⚖️ Вес: ' + weightKg + ' кг');
   if (tpr2 != null && !isNaN(tpr2) && tpr2 > 0) lines.push('🧊 ТПР2 (блок): ' + tpr2);
   if (tpr3 != null && !isNaN(tpr3)) lines.push('📦 ТПР3 (коробка): ' + tpr3);
-  if (tpr4 != null && !isNaN(tpr4)) lines.push('🪵 ТПР4 (паллет): ' + tpr4);
+  if (tpr4 != null && !isNaN(tpr4)) {
+    if (tpr3 != null && !isNaN(tpr3)) {
+      lines.push('🪵 ТПР4 (паллет): ' + tpr4 + '  →  📦 <b>ИТОГО УПАКОВОК: ' + (tpr3 * tpr4) + '</b>');
+    } else {
+      lines.push('🪵 ТПР4 (паллет): ' + tpr4);
+    }
+  }
   if (sgDays != null && !isNaN(sgDays)) lines.push('⏳ СГ (дней): ' + sgDays);
   if (sgPercent != null && !isNaN(sgPercent)) lines.push('📈 Процент СГ: ' + sgPercent);
   if (mfgDate) lines.push('🏷️ Дата изготовления: ' + mfgDate);
   if (expiryDate) lines.push('📅 Годен до: ' + expiryDate);
   var prob = resolveProblemDetails_(data);
-  if (prob) lines.push('⚠️ Проблема: ' + prob);
+  if (prob) {
+    lines.push('⚠️ Проблема: <b>' + prob + '</b>');
+  }
   var comment = String(data && data.comment ? data.comment : '').trim();
   if (comment) lines.push('💬 Комментарий: ' + comment);
   return lines.join('\n');
@@ -604,7 +578,20 @@ function isDuplicateTelegramUpdate_(updateId) {
   try {
     var cache = CacheService.getScriptCache();
     var key = 'tg_update_' + String(updateId);
-    if (cache.get(key)) return true;
+    var cached = cache.get(key);
+    
+    if (cached) {
+      // Увеличиваем счетчик повторений для отладки
+      var count = parseInt(cached) || 1;
+      cache.put(key, String(count + 1), 21600); // 6 часов
+      
+      // Логируем только если много повторений
+      if (count > 1) {
+        Logger.log('Update ' + updateId + ' repeated ' + count + ' times');
+      }
+      return true;
+    }
+    
     cache.put(key, '1', 21600);
     return false;
   } catch (_) {
