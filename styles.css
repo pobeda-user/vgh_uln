@@ -93,6 +93,20 @@ button{background:linear-gradient(180deg,var(--orange),var(--orange2));color:#07
  .toast.error{border-color:rgba(227,6,19,.45);background:rgba(227,6,19,.10)}
  .toast.out{opacity:0;transform:translateY(-6px)}
 
- .clearCacheBtn{position:fixed;left:12px;top:12px;padding:10px 12px;border-radius:12px;border:1px solid rgba(2,6,23,.18);background:rgba(255,255,255,.92);color:#0f172a;font-weight:800;z-index:1200;cursor:pointer;box-shadow:0 16px 34px rgba(2,6,23,.12)}
+ .clearCacheBtn{position:fixed;left:10px;top:10px;padding:6px 8px;border-radius:10px;border:1px solid rgba(2,6,23,.14);background:rgba(255,255,255,.86);color:#0f172a;font-weight:800;font-size:12px;line-height:1.1;z-index:1200;cursor:pointer;box-shadow:0 10px 22px rgba(2,6,23,.10);max-width:min(220px,calc(100vw - 20px));white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
  .clearCacheBtn:hover{background:#ffffff}
  .clearCacheBtn:active{transform:translateY(1px)}
+
+#submitBtn{display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:46px;position:relative}
+#submitBtn .btnSpinner{width:16px;height:16px;border-radius:999px;border:2px solid rgba(255,255,255,.55);border-top-color:#ffffff;display:none;animation:spin .85s linear infinite}
+body.submitting #submitBtn{opacity:.85}
+body.submitting #submitBtn .btnSpinner{display:inline-block}
+body.submitting #submitBtn .btnText{opacity:.92}
+@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+
+.modal{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:2000}
+.modalBackdrop{position:absolute;inset:0;background:rgba(2,6,23,.55)}
+.modalCard{position:relative;width:min(420px,calc(100vw - 28px));background:#ffffff;border:1px solid rgba(2,6,23,.14);border-radius:18px;box-shadow:0 22px 60px rgba(2,6,23,.22);padding:16px 16px 14px;color:#0f172a}
+.modalTitle{font-weight:900;font-size:18px;margin-bottom:6px}
+.modalBody{color:#334155;line-height:1.35;margin-bottom:12px;font-weight:700}
+.modalActions{display:flex;justify-content:flex-end}

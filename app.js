@@ -19,6 +19,8 @@ const calcSgBtn = document.getElementById('calcSgBtn');
 const sgPercentEl = document.getElementById('sgPercent');
 const expiryDateOutEl = document.getElementById('expiryDateOut');
 const toastHostEl = document.getElementById('toastHost');
+const successModalEl = document.getElementById('successModal');
+const successModalOkBtn = document.getElementById('successModalOkBtn');
 
 let currentRequestId_ = '';
 
@@ -31,6 +33,16 @@ const CONFIG = {
 function setStatus(text, { error = false } = {}) {
   statusEl.textContent = text;
   statusEl.classList.toggle('error', error);
+}
+
+function openSuccessModal_() {
+  if (!successModalEl) return;
+  successModalEl.hidden = false;
+}
+
+function closeSuccessModal_() {
+  if (!successModalEl) return;
+  successModalEl.hidden = true;
 }
 
 function toast_(message, { type = 'info', timeoutMs = 3800 } = {}) {
@@ -589,6 +601,17 @@ window.addEventListener('online', () => {
 
 renderQueue_();
 
+successModalOkBtn?.addEventListener('click', () => {
+  closeSuccessModal_();
+});
+
+successModalEl?.addEventListener('click', (e) => {
+  const t = e.target;
+  if (t && t.getAttribute && t.getAttribute('data-action') === 'close') {
+    closeSuccessModal_();
+  }
+});
+
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', async () => {
     try {
@@ -646,6 +669,7 @@ formEl.addEventListener('submit', async (e) => {
   e.preventDefault();
   toast_('Отправка...', { type: 'info', timeoutMs: 1600 });
   submitBtn.disabled = true;
+  document.body.classList.add('submitting');
 
   try {
     if (!CONFIG.submitUrl) {
@@ -772,6 +796,7 @@ formEl.addEventListener('submit', async (e) => {
     syncProblemDetails();
     await renderQueue_();
     toast_('Отправлено.', { type: 'success' });
+    openSuccessModal_();
   } catch (err) {
     const msg = err instanceof Error
       ? `${err.message}${err.stack ? `\n${err.stack}` : ''}`
@@ -780,5 +805,6 @@ formEl.addEventListener('submit', async (e) => {
     toast_(msg, { type: 'error', timeoutMs: 6000 });
   } finally {
     submitBtn.disabled = false;
+    document.body.classList.remove('submitting');
   }
 });

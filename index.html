@@ -208,7 +208,10 @@
         </div>
 
         <div class="actions">
-          <button id="submitBtn" type="submit">Отправить</button>
+          <button id="submitBtn" type="submit">
+            <span class="btnText">Отправить</span>
+            <span class="btnSpinner" aria-hidden="true"></span>
+          </button>
         </div>
 
         <div id="status" class="status" aria-live="polite"></div>
@@ -232,6 +235,17 @@
       <span id="offlineBadge" class="badge" hidden>Оффлайн</span>
     </footer>
   </main>
+
+  <div id="successModal" class="modal" hidden>
+    <div class="modalBackdrop" data-action="close"></div>
+    <div class="modalCard" role="dialog" aria-modal="true" aria-label="Успешно">
+      <div class="modalTitle">Отправлено успешно</div>
+      <div class="modalBody">Заявка отправлена.</div>
+      <div class="modalActions">
+        <button id="successModalOkBtn" type="button" class="secondary">ОК</button>
+      </div>
+    </div>
+  </div>
 
   <script src="./app.js" type="module"></script>
 </body>
