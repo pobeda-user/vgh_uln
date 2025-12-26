@@ -4,6 +4,10 @@ const filesHintEl = document.getElementById('filesHint');
 const submitBtn = document.getElementById('submitBtn');
 const installBtn = document.getElementById('installBtn');
 const offlineBadge = document.getElementById('offlineBadge');
+const netIndicatorEl = document.getElementById('netIndicator');
+const queueListEl = document.getElementById('queueList');
+const queueEmptyEl = document.getElementById('queueEmpty');
+const flushQueueBtn = document.getElementById('flushQueueBtn');
 const chooseProblemBtn = document.getElementById('chooseProblemBtn');
 const problemGridEl = document.getElementById('problemGrid');
 const photoBarcodeBlockEl = document.getElementById('photoBarcodeBlock');
@@ -28,6 +32,7 @@ function setStatus(text, { error = false } = {}) {
 function updateOffline() {
   const offline = !navigator.onLine;
   offlineBadge.hidden = !offline;
+  if (netIndicatorEl) netIndicatorEl.classList.toggle('online', !offline);
 }
 
 async function fileToBase64(file) {
@@ -221,6 +226,190 @@ window.addEventListener('online', updateOffline);
 window.addEventListener('offline', updateOffline);
 updateOffline();
 
+// ===== Offline queue (IndexedDB) =====
+const DB_NAME = 'vgh_pwa';
+const DB_VERSION = 1;
+const STORE_QUEUE = 'queue';
+
+function openDb_() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains(STORE_QUEUE)) {
+        db.createObjectStore(STORE_QUEUE, { keyPath: 'id', autoIncrement: true });
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function withStore_(mode, fn) {
+  const db = await openDb_();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_QUEUE, mode);
+    const store = tx.objectStore(STORE_QUEUE);
+    const out = fn(store);
+    tx.oncomplete = () => resolve(out);
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function queueAdd_(payload) {
+  const item = {
+    createdAt: new Date().toISOString(),
+    payload,
+    attempts: 0,
+    lastError: ''
+  };
+  await withStore_('readwrite', (store) => store.add(item));
+  await renderQueue_();
+}
+
+async function queueGetAll_() {
+  const db = await openDb_();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_QUEUE, 'readonly');
+    const store = tx.objectStore(STORE_QUEUE);
+    const req = store.getAll();
+    req.onsuccess = () => resolve(req.result || []);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function queueDelete_(id) {
+  await withStore_('readwrite', (store) => store.delete(id));
+  await renderQueue_();
+}
+
+async function queueUpdate_(item) {
+  await withStore_('readwrite', (store) => store.put(item));
+  await renderQueue_();
+}
+
+function escapeHtml_(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+async function renderQueue_() {
+  if (!queueListEl || !queueEmptyEl) return;
+  const items = await queueGetAll_().catch(() => []);
+  queueEmptyEl.hidden = items.length !== 0;
+  queueListEl.innerHTML = '';
+
+  for (const item of items) {
+    const p = item.payload || {};
+    const top = `${p.supplier || ''} / ЛК ${p.lk || ''}`.trim() || `Заявка #${item.id}`;
+    const sub = `${item.createdAt}${item.lastError ? ` • Ошибка: ${item.lastError}` : ''}`;
+
+    const li = document.createElement('li');
+    li.className = 'queueItem';
+    li.innerHTML = `
+      <div class="queueMeta">
+        <div class="top">${escapeHtml_(top)}</div>
+        <div class="sub">${escapeHtml_(sub)}</div>
+      </div>
+      <div class="queueActions">
+        <button class="queueBtn" data-action="send" data-id="${item.id}">Отправить</button>
+        <button class="queueBtn" data-action="del" data-id="${item.id}">Удалить</button>
+      </div>
+    `;
+    queueListEl.appendChild(li);
+  }
+}
+
+function isNetworkError_(err) {
+  if (!err) return false;
+  if (err instanceof TypeError) return true;
+  const msg = String(err && err.message ? err.message : err);
+  return /failed to fetch|networkerror|fetch failed|load failed/i.test(msg);
+}
+
+async function sendPayload_(payload) {
+  const res = await fetch(CONFIG.submitUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
+    body: JSON.stringify(payload)
+  });
+
+  const responseText = await res.text().catch(() => '');
+  if (!res.ok) {
+    throw new Error(`HTTP ${res.status} ${res.statusText}\n${responseText}`.trim());
+  }
+  let data = null;
+  try {
+    data = responseText ? JSON.parse(responseText) : null;
+  } catch (_) {
+    data = null;
+  }
+  if (data && data.ok === false && data.error) {
+    throw new Error(String(data.error));
+  }
+  if (!data || data.ok !== true) {
+    throw new Error(`Ответ сервера не JSON/ok=true\n${responseText}`.trim());
+  }
+  return data;
+}
+
+async function flushQueue_() {
+  if (!navigator.onLine) return;
+  const items = await queueGetAll_().catch(() => []);
+  for (const item of items) {
+    try {
+      await sendPayload_(item.payload);
+      await queueDelete_(item.id);
+    } catch (err) {
+      item.attempts = Number(item.attempts || 0) + 1;
+      item.lastError = err instanceof Error ? err.message : String(err);
+      await queueUpdate_(item);
+      if (isNetworkError_(err)) return;
+    }
+  }
+}
+
+queueListEl?.addEventListener('click', async (e) => {
+  const btn = e.target && e.target.closest ? e.target.closest('button[data-action]') : null;
+  if (!btn) return;
+  const action = btn.getAttribute('data-action');
+  const id = Number(btn.getAttribute('data-id'));
+  if (!Number.isFinite(id)) return;
+
+  if (action === 'del') {
+    await queueDelete_(id);
+  }
+  if (action === 'send') {
+    const items = await queueGetAll_().catch(() => []);
+    const item = items.find((x) => Number(x.id) === id);
+    if (!item) return;
+    try {
+      await sendPayload_(item.payload);
+      await queueDelete_(id);
+      setStatus('Элемент очереди отправлен.');
+    } catch (err) {
+      item.attempts = Number(item.attempts || 0) + 1;
+      item.lastError = err instanceof Error ? err.message : String(err);
+      await queueUpdate_(item);
+      setStatus(item.lastError, { error: true });
+    }
+  }
+});
+
+flushQueueBtn?.addEventListener('click', async () => {
+  await flushQueue_();
+});
+
+window.addEventListener('online', () => {
+  flushQueue_();
+});
+
+renderQueue_();
+
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', async () => {
     try {
@@ -317,34 +506,28 @@ formEl.addEventListener('submit', async (e) => {
       }
     }
 
-    const res = await fetch(CONFIG.submitUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'text/plain;charset=UTF-8'
-      },
-      body: JSON.stringify(payload)
-    });
-
-    const responseText = await res.text().catch(() => '');
-    if (!res.ok) {
-      throw new Error(`HTTP ${res.status} ${res.statusText}\n${responseText}`.trim());
+    if (!navigator.onLine) {
+      await queueAdd_(payload);
+      setStatus('Нет интернета. Заявка добавлена в очередь.');
+      return;
     }
 
-    let data = null;
     try {
-      data = responseText ? JSON.parse(responseText) : null;
-    } catch (_) {
-      data = null;
-    }
-
-    if (!data || data.ok !== true) {
-      throw new Error(`Ответ сервера не JSON/ok=true\n${responseText}`.trim());
+      await sendPayload_(payload);
+    } catch (err) {
+      if (isNetworkError_(err)) {
+        await queueAdd_(payload);
+        setStatus('Проблема с сетью. Заявка добавлена в очередь.');
+        return;
+      }
+      throw err;
     }
 
     formEl.reset();
     filesHintEl.textContent = '';
     syncBlockPhotoVisibility();
     syncProblemDetails();
+    await renderQueue_();
     setStatus('Отправлено.');
   } catch (err) {
     const msg = err instanceof Error

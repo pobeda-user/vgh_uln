@@ -10,6 +10,7 @@
 </head>
 <body>
   <main class="container">
+    <div id="netIndicator" class="netIndicator" aria-label="Статус сети" title="Статус сети"></div>
     <header class="header">
       <div class="brand">
         <div class="logo" aria-hidden="true">
@@ -208,6 +209,15 @@
 
         <div id="status" class="status" aria-live="polite"></div>
       </form>
+    </section>
+
+    <section class="card queueCard" aria-label="Очередь отправки">
+      <div class="queueHeader">
+        <div class="queueTitle">Очередь</div>
+        <button id="flushQueueBtn" type="button" class="secondary">Отправить очередь</button>
+      </div>
+      <div id="queueEmpty" class="hint">Очередь пуста</div>
+      <ul id="queueList" class="queueList"></ul>
     </section>
 
     <footer class="footer">
