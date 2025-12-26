@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#0f1f14" />
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="stylesheet" href="./styles.css" />
+  <title>ВГХ / Проблемы</title>
+</head>
+<body>
+  <main class="container">
+    <header class="header">
+      <div class="brand">
+        <div class="logo" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M7 3h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" stroke="currentColor" stroke-width="1.8"/>
+            <path d="M8 7h8M8 11h8M8 15h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            <path d="M17 16.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Z" fill="currentColor"/>
+          </svg>
+        </div>
+        <div>
+          <h1>Ввод ВГХ / Проблем</h1>
+          <p class="sub">Заполните поля, приложите фото/видео и отправьте — данные сохранятся в Google таблицу и уйдут администратору.</p>
+        </div>
+      </div>
+    </header>
+
+    <section class="card">
+      <form id="requestForm">
+        <div class="grid">
+          <label class="field">
+            <span>Поставщик</span>
+            <input name="supplier" type="text" required />
+          </label>
+
+          <label class="field">
+            <span>ЛК товара</span>
+            <input name="lk" type="text" inputmode="numeric" data-digits-only="true" required />
+          </label>
+
+          <label class="field">
+            <span>Д (см)</span>
+            <input name="d_cm" type="text" inputmode="decimal" data-number-only="true" required />
+          </label>
+
+          <label class="field">
+            <span>Ш (см)</span>
+            <input name="w_cm" type="text" inputmode="decimal" data-number-only="true" required />
+          </label>
+
+          <label class="field">
+            <span>В (см)</span>
+            <input name="h_cm" type="text" inputmode="decimal" data-number-only="true" required />
+          </label>
+
+          <label class="field">
+            <span>Вес (кг)</span>
+            <input name="weight_kg" type="text" inputmode="decimal" data-number-only="true" required />
+          </label>
+
+          <label class="field">
+            <span>Блок (шт) (тпр2) если есть</span>
+            <input name="tpr2" type="text" inputmode="numeric" data-digits-only="true" />
+          </label>
+
+          <label class="field">
+            <span>Коробка (шт) (тпр3)</span>
+            <input name="tpr3" type="text" inputmode="numeric" data-digits-only="true" required />
+          </label>
+
+          <label class="field">
+            <span>Паллет (уп) (тпр4)</span>
+            <input name="tpr4" type="text" inputmode="numeric" data-digits-only="true" required />
+          </label>
+
+          <label class="field">
+            <span>Срок годности (дней)</span>
+            <input name="sg_days" type="text" inputmode="numeric" data-digits-only="true" required />
+          </label>
+
+          <div class="field full">
+            <span>Расчёт СГ в % (остаток)</span>
+            <div class="sgCalc">
+              <label class="field">
+                <span>Дата изготовления</span>
+                <input name="mfg_date" type="date" />
+              </label>
+
+              <label class="field">
+                <span>Годен до</span>
+                <input id="expiryDateOut" name="expiry_date" type="text" readonly />
+              </label>
+
+              <div class="field">
+                <span>&nbsp;</span>
+                <button id="calcSgBtn" type="button" class="secondary">Рассчитать СГ %</button>
+              </div>
+
+              <label class="field full">
+                <span>Остаток СГ (%)</span>
+                <input id="sgPercent" name="sg_percent" type="text" readonly />
+              </label>
+            </div>
+          </div>
+
+          <div class="field full">
+            <span class="labelRow">
+              <span>Проблема</span>
+            </span>
+            <button id="chooseProblemBtn" type="button" class="secondary">Выбрать проблему</button>
+            <div id="problemGrid" class="problemGrid" role="radiogroup" aria-label="Проблема" hidden>
+              <label class="problemBtn">
+                <input type="radio" name="problem" value="barcode_not_scanning" />
+                <span class="problemIcon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M3 7v10M7 5v14M11 7v10M15 5v14M19 7v10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                    <path d="M21 12h-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                    <path d="M17 10l-2 2 2 2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </span>
+                <span class="problemText">ШК не сканируется</span>
+              </label>
+
+              <label class="problemBtn">
+                <input type="radio" name="problem" value="barcode_wrong_item" />
+                <span class="problemIcon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M7 7h10v10H7V7Z" stroke="currentColor" stroke-width="1.8"/>
+                    <path d="M9 12h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                    <path d="M12 9v6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                  </svg>
+                </span>
+                <span class="problemText">Пишет не верный товар</span>
+              </label>
+
+              <label class="problemBtn">
+                <input type="radio" name="problem" value="need_handlecode" />
+                <span class="problemIcon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M7 10a5 5 0 0 1 10 0v4a5 5 0 0 1-10 0v-4Z" stroke="currentColor" stroke-width="1.8"/>
+                    <path d="M9 14h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                    <path d="M12 7v3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                  </svg>
+                </span>
+                <span class="problemText">Нужен хендлкод</span>
+              </label>
+
+              <label class="problemBtn">
+                <input type="radio" name="problem" value="stuck_on_gm" />
+                <span class="problemIcon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 8v5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                    <path d="M12 16h.01" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/>
+                    <path d="M10.3 4.8h3.4c.6 0 1.1.3 1.4.8l6.2 10.7c.3.5.3 1.2 0 1.7-.3.5-.9.8-1.5.8H4.6c-.6 0-1.2-.3-1.5-.8-.3-.5-.3-1.2 0-1.7l6.2-10.7c.3-.5.8-.8 1.4-.8Z" stroke="currentColor" stroke-width="1.6"/>
+                  </svg>
+                </span>
+                <span class="problemText">Зависло на ГМ</span>
+              </label>
+            </div>
+          </div>
+
+          <div id="barcodeNotScanningDetails" class="field full" hidden>
+            <span>ШК не сканируется — причина</span>
+            <select name="barcode_not_scanning_reason">
+              <option value="" selected disabled>Выберите...</option>
+              <option value="physical">Физически</option>
+              <option value="wrong_product">Пишет не верный товар</option>
+            </select>
+          </div>
+
+          <label class="field full">
+            <span>Фото: ШК Коробки (обязательно)</span>
+            <input id="photoBarcodeBox" name="photo_barcode_box" type="file" accept="image/*" required />
+          </label>
+
+          <label id="photoBarcodeBlockWrap" class="field full" hidden>
+            <span>Фото: Блок (если есть блок)</span>
+            <input id="photoBarcodeBlock" name="photo_barcode_block" type="file" accept="image/*" />
+          </label>
+
+          <label class="field full">
+            <span>Фото: ШК Штуки (обязательно)</span>
+            <input id="photoBarcodeItem" name="photo_barcode_item" type="file" accept="image/*" required />
+          </label>
+
+          <label class="field full">
+            <span>Фото: Общий вид коробки (обязательно)</span>
+            <input id="photoBoxOverall" name="photo_box_overall" type="file" accept="image/*" required />
+          </label>
+
+          <label class="field full">
+            <span>Вложения коробки (обязательно)</span>
+            <input id="boxAttachments" name="box_attachments" type="file" multiple accept="image/*,video/*" required />
+            <small id="filesHint" class="hint"></small>
+          </label>
+
+          <label class="field full">
+            <span>Комментарий</span>
+            <textarea name="comment" rows="4" placeholder="Дополнительные детали"></textarea>
+          </label>
+        </div>
+
+        <div class="actions">
+          <button id="submitBtn" type="submit">Отправить</button>
+          <button id="installBtn" type="button" class="secondary" hidden>Установить</button>
+        </div>
+
+        <div id="status" class="status" aria-live="polite"></div>
+      </form>
+    </section>
+
+    <footer class="footer">
+      <span id="offlineBadge" class="badge" hidden>Оффлайн</span>
+    </footer>
+  </main>
+
+  <script src="./app.js" type="module"></script>
+</body>
+</html>
