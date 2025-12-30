@@ -40,7 +40,12 @@
 
           <label class="field hlInput">
             <span>🧾 ЛК товара</span>
-            <input name="lk" type="text" inputmode="numeric" data-digits-only="true" required />
+            <input name="lk" type="text" pattern="[A-Za-z0-9А-Яа-яЁё]+" title="Только буквы и цифры" required />
+          </label>
+
+          <label class="field">
+            <span>📝 Наименование товара (необязательно)</span>
+            <input name="product_name" type="text" placeholder="Например: Молоко 3.2% 1л" />
           </label>
 
           <div class="field full">

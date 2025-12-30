@@ -82,6 +82,10 @@ function sanitizeDigitsOnly(value) {
   return value.replace(/\D+/g, '');
 }
 
+function sanitizeLK(value) {
+  return value.replace(/[^A-Za-z0-9А-Яа-яЁё]/g, '');
+}
+
 function sanitizeNumberOnly(value) {
   const v = value.replace(/,/g, '.');
   return v.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
@@ -135,6 +139,18 @@ document.querySelectorAll('[data-digits-only="true"]').forEach((el) => {
   });
 });
 
+// LK field: allow letters and numbers only
+document.querySelectorAll('input[name="lk"]').forEach((el) => {
+  el.addEventListener('input', () => {
+    const before = String(el.value || '');
+    const after = sanitizeLK(before);
+    if (before !== after) {
+      toast_('ЛК: вводите только буквы и цифры (без символов).', { type: 'warning' });
+    }
+    el.value = after;
+  });
+});
+
 // weight_kg: allow decimals with DOT only
 document.querySelectorAll('input[name="weight_kg"]').forEach((el) => {
   el.addEventListener('input', () => {
@@ -156,16 +172,55 @@ document.querySelectorAll('[data-number-only="true"]').forEach((el) => {
   });
 });
 
-attachmentsEl.addEventListener('change', () => {
-  const files = Array.from(attachmentsEl.files || []);
-  const totalBytes = files.reduce((acc, f) => acc + f.size, 0);
-  if (!files.length) {
+attachmentsEl.addEventListener('change', updateFilesHint);
+
+// Добавляем обработчики для всех файловых полей
+document.getElementById('photoBarcodeBox')?.addEventListener('change', updateFilesHint);
+document.getElementById('photoBarcodeBlock')?.addEventListener('change', updateFilesHint);
+document.getElementById('photoBarcodeItem')?.addEventListener('change', updateFilesHint);
+document.getElementById('photoBoxOverall')?.addEventListener('change', updateFilesHint);
+
+function updateFilesHint() {
+  // Собираем все файлы из всех полей
+  const allFiles = [];
+  
+  // Фото ШК Коробки
+  const photoBarcodeBox = document.getElementById('photoBarcodeBox');
+  if (photoBarcodeBox && photoBarcodeBox.files) {
+    allFiles.push(...Array.from(photoBarcodeBox.files));
+  }
+  
+  // Фото Блок
+  const photoBarcodeBlock = document.getElementById('photoBarcodeBlock');
+  if (photoBarcodeBlock && photoBarcodeBlock.files) {
+    allFiles.push(...Array.from(photoBarcodeBlock.files));
+  }
+  
+  // Фото ШК Штуки
+  const photoBarcodeItem = document.getElementById('photoBarcodeItem');
+  if (photoBarcodeItem && photoBarcodeItem.files) {
+    allFiles.push(...Array.from(photoBarcodeItem.files));
+  }
+  
+  // Фото Общий вид коробки
+  const photoBoxOverall = document.getElementById('photoBoxOverall');
+  if (photoBoxOverall && photoBoxOverall.files) {
+    allFiles.push(...Array.from(photoBoxOverall.files));
+  }
+  
+  // Вложения коробки
+  if (attachmentsEl && attachmentsEl.files) {
+    allFiles.push(...Array.from(attachmentsEl.files));
+  }
+  
+  const totalBytes = allFiles.reduce((acc, f) => acc + f.size, 0);
+  if (!allFiles.length) {
     filesHintEl.textContent = '';
     return;
   }
   const mb = (totalBytes / (1024 * 1024)).toFixed(2);
-  filesHintEl.textContent = `Выбрано вложений: ${files.length}, общий размер: ${mb} MB`;
-});
+  filesHintEl.textContent = `Выбрано вложений: ${allFiles.length}, общий размер: ${mb} MB`;
+}
 
 function setBlockPhotoRequired(required) {
   if (!photoBarcodeBlockEl || !photoBarcodeBlockWrapEl) return;
@@ -219,6 +274,7 @@ function resetForm() {
   formEl.reset();
   resetRequestId_();
   filesHintEl.textContent = '';
+  updateFilesHint(); // Обновляем счетчик файлов после сброса
   syncBlockPhotoVisibility();
   syncProblemDetails();
   syncProblemButtonLabel_();
