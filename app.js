@@ -215,6 +215,22 @@ function syncProblemDetails() {
   if (reasonSelect) reasonSelect.required = v === 'barcode_not_scanning';
 }
 
+function resetForm() {
+  formEl.reset();
+  resetRequestId_();
+  filesHintEl.textContent = '';
+  syncBlockPhotoVisibility();
+  syncProblemDetails();
+  syncProblemButtonLabel_();
+  
+  // Скрываем сетку проблем после сброса
+  if (problemGridEl) problemGridEl.hidden = true;
+  
+  // Сбрасываем calculated поля
+  if (sgPercentEl) sgPercentEl.value = '';
+  if (expiryDateOutEl) expiryDateOutEl.value = '';
+}
+
 document.querySelectorAll('input[name="problem"]').forEach((el) => {
   el.addEventListener('change', syncProblemDetails);
   el.addEventListener('change', () => {
@@ -762,11 +778,7 @@ formEl.addEventListener('submit', async (e) => {
       toast_('Нет интернета. Заявка добавлена в очередь.', { type: 'warning', timeoutMs: 4200 });
 
       // prevent multiple manual submits of the same data
-      formEl.reset();
-      resetRequestId_();
-      filesHintEl.textContent = '';
-      syncBlockPhotoVisibility();
-      syncProblemDetails();
+      resetForm();
       await renderQueue_();
       return;
     }
@@ -778,22 +790,14 @@ formEl.addEventListener('submit', async (e) => {
         await queueAdd_(payload);
         toast_('Проблема с сетью. Заявка добавлена в очередь.', { type: 'warning', timeoutMs: 4200 });
 
-        formEl.reset();
-        resetRequestId_();
-        filesHintEl.textContent = '';
-        syncBlockPhotoVisibility();
-        syncProblemDetails();
+        resetForm();
         await renderQueue_();
         return;
       }
       throw err;
     }
 
-    formEl.reset();
-    resetRequestId_();
-    filesHintEl.textContent = '';
-    syncBlockPhotoVisibility();
-    syncProblemDetails();
+    resetForm();
     await renderQueue_();
     toast_('Отправлено.', { type: 'success' });
     openSuccessModal_();
