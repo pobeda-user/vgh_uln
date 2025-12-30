@@ -151,6 +151,30 @@ document.querySelectorAll('input[name="lk"]').forEach((el) => {
   });
 });
 
+// Supplier field: add green validation
+document.querySelectorAll('input[name="supplier"]').forEach((el) => {
+  el.addEventListener('input', () => {
+    const value = String(el.value || '').trim();
+    if (value.length > 0) {
+      el.parentElement.classList.add('hasValue');
+    } else {
+      el.parentElement.classList.remove('hasValue');
+    }
+  });
+});
+
+// Product name field: add green validation
+document.querySelectorAll('input[name="product_name"]').forEach((el) => {
+  el.addEventListener('input', () => {
+    const value = String(el.value || '').trim();
+    if (value.length > 0) {
+      el.parentElement.classList.add('hasValue');
+    } else {
+      el.parentElement.classList.remove('hasValue');
+    }
+  });
+});
+
 // weight_kg: allow decimals with DOT only
 document.querySelectorAll('input[name="weight_kg"]').forEach((el) => {
   el.addEventListener('input', () => {
@@ -275,6 +299,12 @@ function resetForm() {
   resetRequestId_();
   filesHintEl.textContent = '';
   updateFilesHint(); // Обновляем счетчик файлов после сброса
+  
+  // Убираем зеленую подсветку у полей
+  document.querySelectorAll('.hasValue').forEach(el => {
+    el.classList.remove('hasValue');
+  });
+  
   syncBlockPhotoVisibility();
   syncProblemDetails();
   syncProblemButtonLabel_();
