@@ -14,19 +14,77 @@
     <div id="netIndicator" class="netIndicator" aria-label="Статус сети" title="Статус сети"></div>
     <div id="toastHost" class="toastHost" aria-live="polite" aria-atomic="true"></div>
     <button id="clearCacheBtn" type="button" class="clearCacheBtn" aria-label="Обновить и сбросить КЕШ" title="Обновить и сбросить КЕШ">Обновить и сбросить КЕШ</button>
-    <header class="header">
-      <div class="brand">
-        <div class="logo" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M7 3h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" stroke="currentColor" stroke-width="1.8"/>
-            <path d="M8 7h8M8 11h8M8 15h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-            <path d="M17 16.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Z" fill="currentColor"/>
-          </svg>
+    
+    <!-- Registration Screen -->
+    <div id="registrationScreen" class="screen" style="display: none;">
+      <div class="auth-card">
+        <h2>📱 Регистрация</h2>
+        <form id="registrationForm">
+          <div class="field">
+            <span>👤 ФИО</span>
+            <input type="text" id="regFio" name="fio" required />
+          </div>
+          <div class="field">
+            <span>📱 Номер телефона</span>
+            <input type="tel" id="regPhone" name="phone" placeholder="+7XXXXXXXXXX" required />
+          </div>
+          <div class="field">
+            <span>🔐 Логин (латиница, от 3 букв)</span>
+            <input type="text" id="regLogin" name="login" pattern="[a-zA-Z]{3,}" required />
+          </div>
+          <div class="field">
+            <span>🔑 Пароль</span>
+            <input type="password" id="regPassword" name="password" required />
+          </div>
+          <button type="submit" class="btn btn-primary">Зарегистрироваться</button>
+          <button type="button" id="showLoginBtn" class="btn btn-link">Уже есть аккаунт? Войти</button>
+        </form>
+        <div id="registrationError" class="error-message" style="display: none;"></div>
+      </div>
+    </div>
+
+    <!-- Login Screen -->
+    <div id="loginScreen" class="screen" style="display: none;">
+      <div class="auth-card">
+        <h2>🔐 Вход</h2>
+        <form id="loginForm">
+          <div class="field">
+            <span>🔐 Логин</span>
+            <input type="text" id="loginLogin" name="login" required />
+          </div>
+          <div class="field">
+            <span>🔑 Пароль</span>
+            <input type="password" id="loginPassword" name="password" required />
+          </div>
+          <button type="submit" class="btn btn-primary">Войти</button>
+          <button type="button" id="showRegistrationBtn" class="btn btn-link">Нет аккаунта? Зарегистрироваться</button>
+        </form>
+        <div id="loginError" class="error-message" style="display: none;"></div>
+      </div>
+    </div>
+
+    <!-- Main App Header -->
+    <header class="header" id="mainHeader" style="display: none;">
+      <div class="header-content">
+        <button id="personalCabinetBtn" class="header-btn">
+          👤 Личный кабинет
+        </button>
+        <div class="brand">
+          <div class="logo" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M7 3h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" stroke="currentColor" stroke-width="1.8"/>
+              <path d="M8 7h8M8 11h8M8 15h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+              <path d="M17 16.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Z" fill="currentColor"/>
+            </svg>
+          </div>
+          <div>
+            <h1>Ввод ВГХ / Проблем</h1>
+            <p class="sub">Заполните поля, приложите фото/видео и отправьте — данные сохранятся в Google таблицу и уйдут администратору.</p>
+          </div>
         </div>
-        <div>
-          <h1>Ввод ВГХ / Проблем</h1>
-          <p class="sub">Заполните поля, приложите фото/видео и отправьте — данные сохранятся в Google таблицу и уйдут администратору.</p>
-        </div>
+        <button id="logoutBtn" class="header-btn">
+          🚪 Выйти
+        </button>
       </div>
     </header>
 
@@ -226,6 +284,64 @@
         </div>
       </form>
     </section>
+
+    <!-- Personal Cabinet Screen -->
+    <section id="personalCabinetScreen" class="card screen" style="display: none;">
+      <h2>👤 Личный кабинет</h2>
+      <div id="userInfo" class="user-info"></div>
+      <div class="cabinet-tabs">
+        <button class="tab-btn active" data-tab="requests">Мои заявки</button>
+        <button class="tab-btn" data-tab="drafts">Черновики</button>
+      </div>
+      <div id="requestsTab" class="tab-content active">
+        <h3>История заявок</h3>
+        <div id="requestsList" class="requests-list"></div>
+      </div>
+      <div id="draftsTab" class="tab-content">
+        <h3>Черновики</h3>
+        <div id="draftsList" class="drafts-list"></div>
+      </div>
+    </section>
+
+    <!-- Admin Cabinet Screen -->
+    <section id="adminCabinetScreen" class="card screen" style="display: none;">
+      <h2>🛠️ Админский кабинет</h2>
+      <div class="admin-stats">
+        <div class="stat-card">
+          <h3>Всего заявок</h3>
+          <span id="totalRequests">0</span>
+        </div>
+        <div class="stat-card">
+          <h3>Новых заявок</h3>
+          <span id="newRequests">0</span>
+        </div>
+        <div class="stat-card">
+          <h3>В работе</h3>
+          <span id="inProgressRequests">0</span>
+        </div>
+      </div>
+      <div class="admin-filters">
+        <select id="statusFilter">
+          <option value="all">Все статусы</option>
+          <option value="new">Новые</option>
+          <option value="in_progress">В работе</option>
+          <option value="completed">Завершенные</option>
+          <option value="rejected">Отклоненные</option>
+        </select>
+        <input type="text" id="searchFilter" placeholder="Поиск по заявкам...">
+      </div>
+      <div id="adminRequestsList" class="admin-requests-list"></div>
+    </section>
+
+    <!-- Request Detail Modal -->
+    <div id="requestDetailModal" class="modal" hidden>
+      <div class="modalBackdrop" data-action="close"></div>
+      <div class="modalCard" role="dialog" aria-modal="true">
+        <div class="modalTitle">Детали заявки</div>
+        <div class="modalBody" id="requestDetailBody"></div>
+        <div class="modalActions" id="requestDetailFooter"></div>
+      </div>
+    </div>
 
     <section class="card queueCard" aria-label="Очередь отправки">
       <div class="queueHeader">

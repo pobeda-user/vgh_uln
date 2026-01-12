@@ -1,3 +1,17 @@
+// Auth elements
+const registrationScreen = document.getElementById('registrationScreen');
+const loginScreen = document.getElementById('loginScreen');
+const mainHeader = document.getElementById('mainHeader');
+const personalCabinetScreen = document.getElementById('personalCabinetScreen');
+const adminCabinetScreen = document.getElementById('adminCabinetScreen');
+const registrationForm = document.getElementById('registrationForm');
+const loginForm = document.getElementById('loginForm');
+const personalCabinetBtn = document.getElementById('personalCabinetBtn');
+const logoutBtn = document.getElementById('logoutBtn');
+const showLoginBtn = document.getElementById('showLoginBtn');
+const showRegistrationBtn = document.getElementById('showRegistrationBtn');
+
+// Original elements
 const statusEl = document.getElementById('status');
 const formEl = document.getElementById('requestForm');
 const filesHintEl = document.getElementById('filesHint');
@@ -23,6 +37,221 @@ const successModalEl = document.getElementById('successModal');
 const successModalOkBtn = document.getElementById('successModalOkBtn');
 
 let currentRequestId_ = '';
+
+// User state
+let currentUser = null;
+let isAdmin = false;
+
+// Screen management
+function showScreen(screenId) {
+  const screens = document.querySelectorAll('.screen');
+  screens.forEach(screen => screen.style.display = 'none');
+  
+  const targetScreen = document.getElementById(screenId);
+  if (targetScreen) {
+    targetScreen.style.display = 'block';
+  }
+}
+
+function showMainApp() {
+  showScreen('requestForm');
+  mainHeader.style.display = 'block';
+  document.querySelector('.card').style.display = 'block';
+}
+
+function showAuth() {
+  mainHeader.style.display = 'none';
+  document.querySelector('.card').style.display = 'none';
+  if (currentUser) {
+    showLogin();
+  } else {
+    showRegistration();
+  }
+}
+
+function showRegistration() {
+  showScreen('registrationScreen');
+}
+
+function showLogin() {
+  showScreen('loginScreen');
+}
+
+function showPersonalCabinet() {
+  showScreen('personalCabinetScreen');
+  loadUserRequests();
+}
+
+function showAdminCabinet() {
+  showScreen('adminCabinetScreen');
+  loadAdminData();
+}
+
+function logout() {
+  currentUser = null;
+  isAdmin = false;
+  localStorage.removeItem('currentUser');
+  showAuth();
+}
+
+// Auth functions
+async function register(userData) {
+  try {
+    const response = await fetch(`${CONFIG.submitUrl}?action=register`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'text/plain',
+      },
+      body: JSON.stringify(userData)
+    });
+    
+    const result = await response.json();
+    
+    if (result.success) {
+      currentUser = result.user;
+      localStorage.setItem('currentUser', JSON.stringify(currentUser));
+      toast_('Регистрация успешна!');
+      showMainApp();
+      return true;
+    } else {
+      throw new Error(result.error || 'Ошибка регистрации');
+    }
+  } catch (error) {
+    toast_(error.message, { type: 'error' });
+    return false;
+  }
+}
+
+async function login(credentials) {
+  try {
+    const response = await fetch(`${CONFIG.submitUrl}?action=login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'text/plain',
+      },
+      body: JSON.stringify(credentials)
+    });
+    
+    const result = await response.json();
+    
+    if (result.success) {
+      currentUser = result.user;
+      isAdmin = result.isAdmin || false;
+      localStorage.setItem('currentUser', JSON.stringify(currentUser));
+      localStorage.setItem('isAdmin', isAdmin.toString());
+      
+      if (isAdmin) {
+        showAdminCabinet();
+      } else {
+        showMainApp();
+      }
+      
+      toast_('Вход выполнен успешно!');
+      return true;
+    } else {
+      throw new Error(result.error || 'Ошибка входа');
+    }
+  } catch (error) {
+    toast_(error.message, { type: 'error' });
+    return false;
+  }
+}
+
+function checkAuthStatus() {
+  const savedUser = localStorage.getItem('currentUser');
+  const savedAdmin = localStorage.getItem('isAdmin');
+  
+  if (savedUser) {
+    currentUser = JSON.parse(savedUser);
+    isAdmin = savedAdmin === 'true';
+    
+    if (isAdmin) {
+      showAdminCabinet();
+    } else {
+      showMainApp();
+    }
+  } else {
+    showAuth();
+  }
+}
+
+// Load user requests
+async function loadUserRequests() {
+  if (!currentUser) return;
+  
+  try {
+    const response = await fetch(`${CONFIG.submitUrl}?action=getUserRequests&userId=${currentUser.id}`);
+    const result = await response.json();
+    
+    if (result.success) {
+      displayRequests(result.requests, 'requestsList');
+    }
+  } catch (error) {
+    toast_('Ошибка загрузки заявок', { type: 'error' });
+  }
+}
+
+// Load admin data
+async function loadAdminData() {
+  try {
+    const response = await fetch(`${CONFIG.submitUrl}?action=getAdminData`);
+    const result = await response.json();
+    
+    if (result.success) {
+      displayAdminStats(result.stats);
+      displayRequests(result.requests, 'adminRequestsList');
+    }
+  } catch (error) {
+    toast_('Ошибка загрузки данных', { type: 'error' });
+  }
+}
+
+function displayRequests(requests, containerId) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  
+  if (requests.length === 0) {
+    container.innerHTML = '<p class="hint">Заявок пока нет</p>';
+    return;
+  }
+  
+  container.innerHTML = requests.map(request => `
+    <div class="request-item" onclick="showRequestDetail('${request.id}')">
+      <div class="request-header">
+        <span class="request-id">#${request.id}</span>
+        <span class="request-status">${getStatusText(request.status)}</span>
+      </div>
+      <div class="request-meta">
+        ${request.supplier} - ${request.productName || 'Без названия'}
+      </div>
+      <div class="request-meta">
+        ${new Date(request.createdAt).toLocaleString()}
+      </div>
+      ${request.comment ? `<div class="request-comment">${request.comment}</div>` : ''}
+    </div>
+  `).join('');
+}
+
+function displayAdminStats(stats) {
+  document.getElementById('totalRequests').textContent = stats.total || 0;
+  document.getElementById('newRequests').textContent = stats.new || 0;
+  document.getElementById('inProgressRequests').textContent = stats.inProgress || 0;
+}
+
+function getStatusText(status) {
+  const statusMap = {
+    'new': 'Новая',
+    'in_progress': 'В работе',
+    'completed': 'Завершена',
+    'rejected': 'Отклонена'
+  };
+  return statusMap[status] || status;
+}
+
+function showRequestDetail(requestId) {
+  // TODO: Implement request detail modal
+  toast_('Детали заявки #' + requestId);
+}
 
 const CONFIG = {
   // For GitHub Pages (static hosting), submit directly to Google Apps Script Web App.
@@ -808,6 +1037,10 @@ formEl.addEventListener('submit', async (e) => {
       w_m: wCm / 100,
       h_m: hCm / 100,
       weightKg,
+      // Add user info
+      userId: currentUser ? currentUser.id : null,
+      userFio: currentUser ? currentUser.fio : null,
+      userPhone: currentUser ? currentUser.phone : null,
       tpr1: 1,
       tpr2: tpr2 ?? null,
       tpr3,
@@ -898,3 +1131,57 @@ formEl.addEventListener('submit', async (e) => {
     document.body.classList.remove('submitting');
   }
 });
+
+// Auth event listeners
+registrationForm?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const formData = new FormData(registrationForm);
+  const userData = {
+    fio: formData.get('fio'),
+    phone: formData.get('phone'),
+    login: formData.get('login'),
+    password: formData.get('password')
+  };
+  
+  await register(userData);
+});
+
+loginForm?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const formData = new FormData(loginForm);
+  const credentials = {
+    login: formData.get('login'),
+    password: formData.get('password')
+  };
+  
+  await login(credentials);
+});
+
+showLoginBtn?.addEventListener('click', showLogin);
+showRegistrationBtn?.addEventListener('click', showRegistration);
+personalCabinetBtn?.addEventListener('click', showPersonalCabinet);
+logoutBtn?.addEventListener('click', logout);
+
+// Tab switching
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const tabName = btn.getAttribute('data-tab');
+    
+    // Update button states
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    
+    // Update tab content
+    document.querySelectorAll('.tab-content').forEach(content => {
+      content.classList.remove('active');
+    });
+    
+    const targetTab = document.getElementById(tabName + 'Tab');
+    if (targetTab) {
+      targetTab.classList.add('active');
+    }
+  });
+});
+
+// Initialize app
+checkAuthStatus();
