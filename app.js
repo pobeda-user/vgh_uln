@@ -97,22 +97,31 @@ function logout() {
 // Auth functions
 async function register(userData) {
   try {
-    // Используем GET с параметрами вместо POST для обхода CORS
+    // Используем JSONP подход для обхода CORS
     const params = new URLSearchParams();
     params.append('action', 'register');
     params.append('fio', userData.fio);
     params.append('phone', userData.phone);
     params.append('login', userData.login);
     params.append('password', userData.password);
+    params.append('callback', 'jsonpCallback');
     
-    const response = await fetch(`${CONFIG.submitUrl}?${params.toString()}`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      }
+    const url = `${CONFIG.submitUrl}?${params.toString()}`;
+    
+    // Создаем JSONP запрос
+    const result = await new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = url;
+      script.onerror = () => reject(new Error('Network error'));
+      
+      window.jsonpCallback = (data) => {
+        document.head.removeChild(script);
+        delete window.jsonpCallback;
+        resolve(data);
+      };
+      
+      document.head.appendChild(script);
     });
-    
-    const result = await response.json();
     
     if (result.success) {
       currentUser = result.user;
@@ -131,20 +140,29 @@ async function register(userData) {
 
 async function login(credentials) {
   try {
-    // Используем GET с параметрами вместо POST для обхода CORS
+    // Используем JSONP подход для обхода CORS
     const params = new URLSearchParams();
     params.append('action', 'login');
     params.append('login', credentials.login);
     params.append('password', credentials.password);
+    params.append('callback', 'jsonpCallback');
     
-    const response = await fetch(`${CONFIG.submitUrl}?${params.toString()}`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      }
+    const url = `${CONFIG.submitUrl}?${params.toString()}`;
+    
+    // Создаем JSONP запрос
+    const result = await new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = url;
+      script.onerror = () => reject(new Error('Network error'));
+      
+      window.jsonpCallback = (data) => {
+        document.head.removeChild(script);
+        delete window.jsonpCallback;
+        resolve(data);
+      };
+      
+      document.head.appendChild(script);
     });
-    
-    const result = await response.json();
     
     if (result.success) {
       currentUser = result.user;
@@ -152,13 +170,8 @@ async function login(credentials) {
       localStorage.setItem('currentUser', JSON.stringify(currentUser));
       localStorage.setItem('isAdmin', isAdmin.toString());
       
-      if (isAdmin) {
-        showAdminCabinet();
-      } else {
-        showMainApp();
-      }
-      
       toast_('Вход выполнен успешно!');
+      showMainApp();
       return true;
     } else {
       throw new Error(result.error || 'Ошибка входа');
