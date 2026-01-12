@@ -97,12 +97,19 @@ function logout() {
 // Auth functions
 async function register(userData) {
   try {
-    const response = await fetch(`${CONFIG.submitUrl}?action=register`, {
-      method: 'POST',
+    // Используем GET с параметрами вместо POST для обхода CORS
+    const params = new URLSearchParams();
+    params.append('action', 'register');
+    params.append('fio', userData.fio);
+    params.append('phone', userData.phone);
+    params.append('login', userData.login);
+    params.append('password', userData.password);
+    
+    const response = await fetch(`${CONFIG.submitUrl}?${params.toString()}`, {
+      method: 'GET',
       headers: {
         'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(userData)
+      }
     });
     
     const result = await response.json();
@@ -124,12 +131,17 @@ async function register(userData) {
 
 async function login(credentials) {
   try {
-    const response = await fetch(`${CONFIG.submitUrl}?action=login`, {
-      method: 'POST',
+    // Используем GET с параметрами вместо POST для обхода CORS
+    const params = new URLSearchParams();
+    params.append('action', 'login');
+    params.append('login', credentials.login);
+    params.append('password', credentials.password);
+    
+    const response = await fetch(`${CONFIG.submitUrl}?${params.toString()}`, {
+      method: 'GET',
       headers: {
         'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(credentials)
+      }
     });
     
     const result = await response.json();
