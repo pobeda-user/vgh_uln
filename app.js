@@ -100,7 +100,7 @@ async function register(userData) {
     const response = await fetch(`${CONFIG.submitUrl}?action=register`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'text/plain',
+        'Content-Type': 'application/json',
       },
       body: JSON.stringify(userData)
     });
@@ -127,7 +127,7 @@ async function login(credentials) {
     const response = await fetch(`${CONFIG.submitUrl}?action=login`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'text/plain',
+        'Content-Type': 'application/json',
       },
       body: JSON.stringify(credentials)
     });
@@ -180,7 +180,12 @@ async function loadUserRequests() {
   if (!currentUser) return;
   
   try {
-    const response = await fetch(`${CONFIG.submitUrl}?action=getUserRequests&userId=${currentUser.id}`);
+    const response = await fetch(`${CONFIG.submitUrl}?action=getUserRequests&userId=${currentUser.id}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    });
     const result = await response.json();
     
     if (result.success) {
@@ -194,7 +199,12 @@ async function loadUserRequests() {
 // Load admin data
 async function loadAdminData() {
   try {
-    const response = await fetch(`${CONFIG.submitUrl}?action=getAdminData`);
+    const response = await fetch(`${CONFIG.submitUrl}?action=getAdminData`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    });
     const result = await response.json();
     
     if (result.success) {
@@ -1003,57 +1013,56 @@ formEl.addEventListener('submit', async (e) => {
   document.body.classList.add('submitting');
 
   try {
-    if (!CONFIG.submitUrl) {
-      throw new Error('Не задан URL отправки.');
-    }
+      if (!CONFIG.submitUrl) {
+        throw new Error('Не задан URL отправки.');
+      }
 
-    const fd = new FormData(formEl);
+      const fd = new FormData(formEl);
 
-    const requestId = getOrCreateRequestId_();
+      const requestId = getOrCreateRequestId_();
 
-    const dCm = parseIntStrict(fd.get('d_cm'));
-    const wCm = parseIntStrict(fd.get('w_cm'));
-    const hCm = parseIntStrict(fd.get('h_cm'));
-    const weightKg = parseDotDecimalNumber(fd.get('weight_kg'));
-    const sgDays = parseIntStrict(fd.get('sg_days'));
-    const tpr2 = getTpr2Value_();
-    const tpr3 = parseIntStrict(fd.get('tpr3'));
-    const tpr4 = parseIntStrict(fd.get('tpr4'));
+      const dCm = parseIntStrict(fd.get('d_cm'));
+      const wCm = parseIntStrict(fd.get('w_cm'));
+      const hCm = parseIntStrict(fd.get('h_cm'));
+      const weightKg = parseDotDecimalNumber(fd.get('weight_kg'));
+      const tpr2 = getTpr2Value_();
+      const tpr3 = parseIntStrict(fd.get('tpr3'));
+      const tpr4 = parseIntStrict(fd.get('tpr4'));
+      const sgDays = parseIntStrict(fd.get('sg_days'));
+      const sgPercent = parseNumber(fd.get('sg_percent'));
 
-    if (dCm === null || wCm === null || hCm === null) throw new Error('Заполните Длина/Ширина/Высота (только цифры).');
-    if (weightKg === null) throw new Error('Вес должен быть числом, можно с точкой (например 1.5).');
-    if (sgDays === null) throw new Error('СГ (дней) должен быть числом.');
-    if (tpr3 === null || tpr4 === null) throw new Error('ТПР3 и ТПР4 обязательны и должны быть числами.');
+      if (dCm === null || wCm === null || hCm === null) throw new Error('Заполните Длина/Ширина/Высота (только цифры).');
+      if (weightKg === null) throw new Error('Вес должен быть числом, можно с точкой (например 1.5).');
+      if (sgDays === null) throw new Error('СГ (дней) должен быть числом.');
+      if (tpr3 === null || tpr4 === null) throw new Error('ТПР3 и ТПР4 обязательны и должны быть числами.');
 
-    const sgPercent = parseNumber(fd.get('sg_percent'));
-
-    const payload = {
-      requestId,
-      clientTs: new Date().toISOString(),
-      supplier: String(fd.get('supplier') || '').trim(),
-      productType: String(fd.get('product_type') || '').trim(),
-      lk: String(fd.get('lk') || '').trim(),
-      d_m: dCm / 100,
-      w_m: wCm / 100,
-      h_m: hCm / 100,
-      weightKg,
-      // Add user info
-      userId: currentUser ? currentUser.id : null,
-      userFio: currentUser ? currentUser.fio : null,
-      userPhone: currentUser ? currentUser.phone : null,
-      tpr1: 1,
-      tpr2: tpr2 ?? null,
-      tpr3,
-      tpr4,
-      sgDays,
-      sgPercent: sgPercent ?? null,
-      mfgDate: String(fd.get('mfg_date') || ''),
-      expiryDate: expiryDateOutEl ? String(expiryDateOutEl.value || '') : '',
-      problem: getSelectedProblem(),
-      barcodeNotScanningReason: String(fd.get('barcode_not_scanning_reason') || ''),
-      comment: String(fd.get('comment') || ''),
-      files: []
-    };
+      const payload = {
+        requestId,
+        clientTs: new Date().toISOString(),
+        supplier: String(fd.get('supplier') || '').trim(),
+        productType: String(fd.get('product_type') || '').trim(),
+        lk: String(fd.get('lk') || '').trim(),
+        d_m: dCm / 100,
+        w_m: wCm / 100,
+        h_m: hCm / 100,
+        weightKg,
+        // Add user info
+        userId: currentUser ? currentUser.id : null,
+        userFio: currentUser ? currentUser.fio : null,
+        userPhone: currentUser ? currentUser.phone : null,
+        tpr1: 1,
+        tpr2: tpr2,
+        tpr3: tpr3,
+        tpr4: tpr4,
+        sgDays: sgDays,
+        sgPercent: sgPercent ?? null,
+        mfgDate: String(fd.get('mfg_date') || ''),
+        expiryDate: expiryDateOutEl ? String(expiryDateOutEl.value || '') : '',
+        problem: getSelectedProblem(),
+        barcodeNotScanningReason: String(fd.get('barcode_not_scanning_reason') || ''),
+        comment: String(fd.get('comment') || ''),
+        files: []
+      };
 
     const fileFields = [
       { name: 'photo_barcode_box', required: true },
@@ -1068,13 +1077,39 @@ formEl.addEventListener('submit', async (e) => {
         const list = Array.from((fd.getAll(ff.name) || [])).filter((x) => x instanceof File);
         if (ff.required && list.length === 0) throw new Error('Добавьте обязательные вложения коробки.');
         for (const f of list) {
-          payload.files.push({
-            field: ff.name,
-            name: f.name,
-            mimeType: f.type || 'application/octet-stream',
-            size: f.size,
-            dataBase64: await fileToBase64(f)
-          });
+          const filePayload = {
+            requestId,
+            clientTs: new Date().toISOString(),
+            supplier: String(fd.get('supplier') || '').trim(),
+            productType: String(fd.get('product_type') || '').trim(),
+            lk: String(fd.get('lk') || '').trim(),
+            d_m: dCm / 100,
+            w_m: wCm / 100,
+            h_m: hCm / 100,
+            weightKg,
+            // Add user info
+            userId: currentUser ? currentUser.id : null,
+            userFio: currentUser ? currentUser.fio : null,
+            userPhone: currentUser ? currentUser.phone : null,
+            tpr1: 1,
+            tpr2: tpr2,
+            tpr3: tpr3,
+            tpr4: tpr4,
+            sgDays,
+            sgPercent: sgPercent ?? null,
+            mfgDate: String(fd.get('mfg_date') || ''),
+            expiryDate: expiryDateOutEl ? String(expiryDateOutEl.value || '') : '',
+            problem: getSelectedProblem(),
+            barcodeNotScanningReason: String(fd.get('barcode_not_scanning_reason') || ''),
+            comment: String(fd.get('comment') || ''),
+            files: []
+          };
+          filePayload.field = ff.name;
+          filePayload.name = f.name;
+          filePayload.mimeType = f.type || 'application/octet-stream';
+          filePayload.size = f.size;
+          filePayload.dataBase64 = await fileToBase64(f);
+          payload.files.push(filePayload);
         }
       } else {
         const f = fd.get(ff.name);
