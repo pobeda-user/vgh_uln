@@ -62,11 +62,7 @@ function showMainApp() {
 function showAuth() {
   mainHeader.style.display = 'none';
   document.querySelector('.card').style.display = 'none';
-  if (currentUser) {
-    showLogin();
-  } else {
-    showRegistration();
-  }
+  showLogin(); // Только вход, регистрация через Telegram
 }
 
 function showRegistration() {

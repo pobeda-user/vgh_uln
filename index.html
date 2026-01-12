@@ -47,6 +47,11 @@
     <div id="loginScreen" class="screen" style="display: none;">
       <div class="auth-card">
         <h2>🔐 Вход</h2>
+        <div class="alert alert-info">
+          <strong>ℹ️ Внимание!</strong><br>
+          Регистрация в системе доступна только через Telegram бота.<br>
+          Если у вас еще нет аккаунта, напишите боту: <a href="https://t.me/uln_vgh_bot" target="_blank">@uln_vgh_bot</a>
+        </div>
         <form id="loginForm">
           <div class="field">
             <span>🔐 Логин</span>
@@ -57,7 +62,6 @@
             <input type="password" id="loginPassword" name="password" required />
           </div>
           <button type="submit" class="btn btn-primary">Войти</button>
-          <button type="button" id="showRegistrationBtn" class="btn btn-link">Нет аккаунта? Зарегистрироваться</button>
         </form>
         <div id="loginError" class="error-message" style="display: none;"></div>
       </div>
