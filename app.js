@@ -106,6 +106,7 @@ async function register(userData) {
     params.append('phone', userData.phone);
     params.append('login', userData.login);
     params.append('password', userData.password);
+    params.append('chatId', userData.chatId || ''); // Добавляем Chat ID
     params.append('callback', callbackName);
     
     const url = `${CONFIG.submitUrl}?${params.toString()}`;
@@ -217,16 +218,39 @@ async function loadUserRequests() {
   if (!currentUser) return;
   
   try {
-    const response = await fetch(`${CONFIG.submitUrl}?action=getUserRequests&userId=${currentUser.id}`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      }
+    // Используем JSONP подход для обхода CORS
+    const callbackName = 'jsonpCallback_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    
+    const params = new URLSearchParams();
+    params.append('action', 'getUserRequests');
+    params.append('userId', currentUser.id);
+    params.append('callback', callbackName);
+    
+    const url = `${CONFIG.submitUrl}?${params.toString()}`;
+    
+    // Создаем JSONP запрос
+    const result = await new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = url;
+      script.onerror = () => {
+        document.head.removeChild(script);
+        delete window[callbackName];
+        reject(new Error('Network error'));
+      };
+      
+      window[callbackName] = (data) => {
+        document.head.removeChild(script);
+        delete window[callbackName];
+        resolve(data);
+      };
+      
+      document.head.appendChild(script);
     });
-    const result = await response.json();
     
     if (result.success) {
       displayRequests(result.requests, 'requestsList');
+    } else {
+      toast_(result.error || 'Ошибка загрузки заявок', { type: 'error' });
     }
   } catch (error) {
     toast_('Ошибка загрузки заявок', { type: 'error' });
@@ -236,17 +260,39 @@ async function loadUserRequests() {
 // Load admin data
 async function loadAdminData() {
   try {
-    const response = await fetch(`${CONFIG.submitUrl}?action=getAdminData`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      }
+    // Используем JSONP подход для обхода CORS
+    const callbackName = 'jsonpCallback_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    
+    const params = new URLSearchParams();
+    params.append('action', 'getAdminData');
+    params.append('callback', callbackName);
+    
+    const url = `${CONFIG.submitUrl}?${params.toString()}`;
+    
+    // Создаем JSONP запрос
+    const result = await new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = url;
+      script.onerror = () => {
+        document.head.removeChild(script);
+        delete window[callbackName];
+        reject(new Error('Network error'));
+      };
+      
+      window[callbackName] = (data) => {
+        document.head.removeChild(script);
+        delete window[callbackName];
+        resolve(data);
+      };
+      
+      document.head.appendChild(script);
     });
-    const result = await response.json();
     
     if (result.success) {
       displayAdminStats(result.stats);
       displayRequests(result.requests, 'adminRequestsList');
+    } else {
+      toast_(result.error || 'Ошибка загрузки данных', { type: 'error' });
     }
   } catch (error) {
     toast_('Ошибка загрузки данных', { type: 'error' });
