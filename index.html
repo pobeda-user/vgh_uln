@@ -1,377 +1,172 @@
 <!doctype html>
 <html lang="ru">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <meta name="theme-color" content="#e30613" />
-  <link rel="icon" href="./assets/1757494154.png" type="image/png" />
-  <link rel="manifest" href="./manifest.json" />
-  <link rel="stylesheet" href="./styles.css" />
-  <title>ВГХ / Проблемы</title>
-</head>
-<body>
-  <main class="container">
-    <div id="netIndicator" class="netIndicator" aria-label="Статус сети" title="Статус сети"></div>
-    <div id="toastHost" class="toastHost" aria-live="polite" aria-atomic="true"></div>
-    <button id="clearCacheBtn" type="button" class="clearCacheBtn" aria-label="Обновить и сбросить КЕШ" title="Обновить и сбросить КЕШ">Обновить и сбросить КЕШ</button>
-    
-    <!-- Registration Screen -->
-    <div id="registrationScreen" class="screen" style="display: none;">
-      <div class="auth-card">
-        <h2>📱 Регистрация</h2>
-        <form id="registrationForm">
-          <div class="field">
-            <span>👤 ФИО</span>
-            <input type="text" id="regFio" name="fio" required />
-          </div>
-          <div class="field">
-            <span>📱 Номер телефона</span>
-            <input type="tel" id="regPhone" name="phone" placeholder="+7XXXXXXXXXX" required />
-          </div>
-          <div class="field">
-            <span>🔐 Логин (латиница, от 3 букв)</span>
-            <input type="text" id="regLogin" name="login" pattern="[a-zA-Z]{3,}" required />
-          </div>
-          <div class="field">
-            <span>🔑 Пароль</span>
-            <input type="password" id="regPassword" name="password" required />
-          </div>
-          <button type="submit" class="btn btn-primary">Зарегистрироваться</button>
-          <button type="button" id="showLoginBtn" class="btn btn-link">Уже есть аккаунт? Войти</button>
-        </form>
-        <div id="registrationError" class="error-message" style="display: none;"></div>
-      </div>
-    </div>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ВГХ Ульяновск</title>
+    <link rel="manifest" href="./manifest.json" />
+    <link rel="stylesheet" href="./styles.css" />
+    <meta name="theme-color" content="#050915" />
+  </head>
+  <body>
+    <div id="netIndicator" class="netIndicator online" aria-hidden="true"></div>
+    <div id="offlineBadge" class="pill" hidden>OFFLINE</div>
 
-    <!-- Login Screen -->
-    <div id="loginScreen" class="screen" style="display: none;">
-      <div class="auth-card">
-        <h2>🔐 Вход</h2>
-        <div class="alert alert-info">
-          <strong>ℹ️ Внимание!</strong><br>
-          Регистрация в системе доступна только через Telegram бота.<br>
-          Если у вас еще нет аккаунта, напишите боту: <a href="https://t.me/uln_vgh_bot" target="_blank">@uln_vgh_bot</a>
+    <div class="container">
+      <header id="mainHeader" class="header" style="display:none">
+        <div class="header-content" style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+          <div class="brand" style="display:flex;gap:12px;align-items:center">
+            <div class="logo" aria-hidden="true"><img src="./icon.svg" alt="" style="width:22px;height:22px" /></div>
+            <div>
+              <h1 style="margin:0">ВГХ Ульяновск</h1>
+              <p class="sub" style="margin:0">PWA + Telegram</p>
+            </div>
+          </div>
+          <!-- app.js will inject headerUserName + logoutBtn here if missing -->
         </div>
-        <form id="loginForm">
-          <div class="field">
-            <span>🔐 Логин</span>
-            <input type="text" id="loginLogin" name="login" required />
-          </div>
-          <div class="field">
-            <span>🔑 Пароль</span>
-            <input type="password" id="loginPassword" name="password" required />
-          </div>
-          <button type="submit" class="btn btn-primary">Войти</button>
-        </form>
-        <div id="loginError" class="error-message" style="display: none;"></div>
-      </div>
-    </div>
+      </header>
 
-    <!-- Main App Header -->
-    <header class="header" id="mainHeader" style="display: none;">
-      <div class="header-content">
-        <button id="personalCabinetBtn" class="header-btn">
-          👤 Личный кабинет
-        </button>
-        <div class="brand">
-          <div class="logo" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M7 3h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" stroke="currentColor" stroke-width="1.8"/>
-              <path d="M8 7h8M8 11h8M8 15h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-              <path d="M17 16.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Z" fill="currentColor"/>
-            </svg>
-          </div>
-          <div>
-            <h1>Ввод ВГХ / Проблем</h1>
-            <p class="sub">Заполните поля, приложите фото/видео и отправьте — данные сохранятся в Google таблицу и уйдут администратору.</p>
-          </div>
+      <section id="loginScreen" class="screen" style="display:none">
+        <div class="auth-card">
+          <h2>Вход</h2>
+          <form id="loginForm" class="grid" autocomplete="on">
+            <div class="field full">
+              <span>Логин</span>
+              <input name="login" required />
+            </div>
+            <div class="field full">
+              <span>Пароль</span>
+              <input name="password" type="password" required />
+            </div>
+            <div class="field full">
+              <button type="submit">Войти</button>
+            </div>
+          </form>
+          <button id="showRegistrationBtn" type="button" class="btn-link">Регистрация через Telegram</button>
+          <div id="status" class="sub" style="margin-top:10px"></div>
         </div>
-        <button id="logoutBtn" class="header-btn">
-          🚪 Выйти
-        </button>
-      </div>
-    </header>
+      </section>
 
-    <section class="card">
-      <form id="requestForm">
-        <div class="grid">
-          <label class="field softHl">
-            <span>🏭 Поставщик</span>
-            <input name="supplier" type="text" />
-          </label>
+      <section id="registrationScreen" class="screen" style="display:none">
+        <div class="auth-card">
+          <h2>Регистрация</h2>
+          <p class="sub">Регистрация выполняется только через Telegram-бота.</p>
+          <button id="showLoginBtn" type="button" class="btn-link">Назад ко входу</button>
+        </div>
+      </section>
 
-          <label class="field hlInput">
-            <span>🧾 ЛК товара</span>
-            <input name="lk" type="text" pattern="[A-Za-z0-9А-Яа-яЁё]+" title="Только буквы и цифры" required />
-          </label>
-
-          <label class="field">
-            <span>📝 Наименование товара (необязательно)</span>
-            <input name="product_name" type="text" placeholder="Например: Молоко 3.2% 1л" />
-          </label>
-
-          <div class="field full">
-            <span>🏷️ Тип товара</span>
-            <div class="typeGrid" role="radiogroup" aria-label="Тип товара">
-              <label class="typeBtn">
-                <input type="radio" name="product_type" value="dry" required />
-                <span class="typeText">🥫 Сухой</span>
-              </label>
-              <label class="typeBtn">
-                <input type="radio" name="product_type" value="fresh" />
-                <span class="typeText">🥩 ФРЕШ</span>
-              </label>
-              <label class="typeBtn">
-                <input type="radio" name="product_type" value="frov" />
-                <span class="typeText">🥦 ФРОВ</span>
-              </label>
-              <label class="typeBtn">
-                <input type="radio" name="product_type" value="frozen" />
-                <span class="typeText">❄️ Заморозка</span>
-              </label>
-              <label class="typeBtn">
-                <input type="radio" name="product_type" value="strong_alcohol" />
-                <span class="typeText">🥃 Крепкий алкоголь</span>
-              </label>
+      <section id="requestForm" class="screen" style="display:none">
+        <div class="card">
+          <div class="labelRow">
+            <div style="font-weight:800">Форма ВГХ</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button id="personalCabinetBtn" type="button" class="header-btn">Личный кабинет</button>
+              <button id="installBtn" type="button" class="header-btn">Установить</button>
+              <button id="clearCacheBtn" type="button" class="header-btn">Сброс кеша</button>
             </div>
           </div>
 
-          <label class="field hlInput">
-            <span>📏 Длина (см)</span>
-            <input name="d_cm" type="text" inputmode="numeric" data-digits-only="true" required />
-          </label>
+          <form id="requestForm" class="grid">
+            <div class="field"><span>Поставщик</span><input name="supplier" required /></div>
+            <div class="field"><span>Тип товара</span><input name="product_type" required /></div>
+            <div class="field"><span>ЛК</span><input name="lk" required /></div>
+            <div class="field"><span>Наименование товара</span><input name="product_name" /></div>
 
-          <label class="field hlInput">
-            <span>📏 Ширина (см)</span>
-            <input name="w_cm" type="text" inputmode="numeric" data-digits-only="true" required />
-          </label>
+            <div class="field"><span>Длина (см)</span><input name="d_cm" data-digits-only="true" required /></div>
+            <div class="field"><span>Ширина (см)</span><input name="w_cm" data-digits-only="true" required /></div>
+            <div class="field"><span>Высота (см)</span><input name="h_cm" data-digits-only="true" required /></div>
+            <div class="field"><span>Вес (кг)</span><input name="weight_kg" required /></div>
 
-          <label class="field hlInput">
-            <span>📏 Высота (см)</span>
-            <input name="h_cm" type="text" inputmode="numeric" data-digits-only="true" required />
-          </label>
+            <div class="field"><span>ТПР2</span><input name="tpr2" data-number-only="true" /></div>
+            <div class="field"><span>ТПР3</span><input name="tpr3" data-number-only="true" required /></div>
+            <div class="field"><span>ТПР4</span><input name="tpr4" data-number-only="true" required /></div>
+            <div class="field"><span>СГ (дней)</span><input name="sg_days" data-number-only="true" required /></div>
 
-          <label class="field hlInput">
-            <span>⚖️ Вес (кг)</span>
-            <input name="weight_kg" type="text" inputmode="decimal" required />
-          </label>
+            <div class="field"><span>Дата изготовления</span><input name="mfg_date" placeholder="YYYY-MM-DD" /></div>
+            <div class="field"><span>Годен до</span><input id="expiryDateOut" readonly /></div>
 
-          <label class="field">
-            <span>🧊 Блок (шт) (тпр2) если есть</span>
-            <input name="tpr2" type="text" inputmode="numeric" data-digits-only="true" />
-          </label>
+            <div class="field">
+              <span>Процент СГ</span>
+              <input id="sgPercent" readonly />
+              <button id="calcSgBtn" type="button" class="secondary">Рассчитать</button>
+            </div>
 
-          <label class="field hlInput">
-            <span>📦 Коробка (шт) (тпр3)</span>
-            <input name="tpr3" type="text" inputmode="numeric" data-digits-only="true" required />
-          </label>
-
-          <label class="field hlInput">
-            <span>📦 Паллет (уп) (тпр4)</span>
-            <input name="tpr4" type="text" inputmode="numeric" data-digits-only="true" required />
-          </label>
-
-          <label class="field hlInput">
-            <span>⏳ Срок годности (дней)</span>
-            <input name="sg_days" type="text" inputmode="numeric" data-digits-only="true" required />
-          </label>
-
-          <div class="field full">
-            <span>Расчёт СГ в % (остаток)</span>
-            <div class="sgCalc">
-              <label class="field">
-                <span>Дата изготовления</span>
-                <input name="mfg_date" type="date" />
-              </label>
-
-              <label class="field">
-                <span>Годен до</span>
-                <input id="expiryDateOut" name="expiry_date" type="text" readonly />
-              </label>
-
-              <div class="field">
-                <span>&nbsp;</span>
-                <button id="calcSgBtn" type="button" class="secondary">Рассчитать СГ %</button>
+            <div class="field full">
+              <span>Проблема</span>
+              <button id="chooseProblemBtn" type="button" class="secondary">Выбрать проблему</button>
+              <div id="problemGrid" class="typeGrid" hidden></div>
+              <div id="barcodeNotScanningDetails" hidden>
+                <select name="barcode_not_scanning_reason">
+                  <option value="">Причина</option>
+                  <option value="damaged">Поврежден</option>
+                  <option value="no_read">Не читается</option>
+                </select>
               </div>
-
-              <label class="field full">
-                <span>Остаток СГ (%)</span>
-                <input id="sgPercent" name="sg_percent" type="text" readonly />
-              </label>
             </div>
-          </div>
 
-          <div class="field full">
-            <span class="labelRow">
-              <span>⚠️ Проблема</span>
-            </span>
-            <button id="chooseProblemBtn" type="button" class="secondary">Выбрать проблему</button>
-            <div id="problemGrid" class="problemGrid" role="radiogroup" aria-label="Проблема" hidden>
-              <label class="problemBtn">
-                <input type="radio" name="problem" value="barcode_not_scanning" />
-                <span class="problemIcon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M3 7v10M7 5v14M11 7v10M15 5v14M19 7v10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                    <path d="M21 12h-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                    <path d="M17 10l-2 2 2 2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-                  </svg>
-                </span>
-                <span class="problemText">ШК не сканируется</span>
-              </label>
+            <div class="field full"><span>Комментарий</span><textarea name="comment"></textarea></div>
 
-              <label class="problemBtn">
-                <input type="radio" name="problem" value="stuck_on_gm" />
-                <span class="problemIcon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M12 8v5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                    <path d="M12 16h.01" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/>
-                    <path d="M10.3 4.8h3.4c.6 0 1.1.3 1.4.8l6.2 10.7c.3.5.3 1.2 0 1.7-.3.5-.9.8-1.5.8H4.6c-.6 0-1.2-.3-1.5-.8-.3-.5-.3-1.2 0-1.7l6.2-10.7c.3-.5.8-.8 1.4-.8Z" stroke="currentColor" stroke-width="1.6"/>
-                  </svg>
-                </span>
-                <span class="problemText">Зависло на ГМ</span>
-              </label>
+            <div class="field full">
+              <span>Вложения</span>
+              <input id="boxAttachments" type="file" multiple />
+              <div id="filesHint" class="sub"></div>
             </div>
+
+            <div id="photoBarcodeBlockWrap" class="field full" hidden>
+              <span>Фото ШК Блока</span>
+              <input id="photoBarcodeBlock" type="file" />
+            </div>
+
+            <div class="field full"><button id="submitBtn" type="submit">Отправить</button></div>
+          </form>
+
+          <div class="queueCard card">
+            <div class="queueHeader">
+              <div class="queueTitle">Очередь (offline)</div>
+              <button id="flushQueueBtn" type="button" class="header-btn">Отправить очередь</button>
+            </div>
+            <div id="queueEmpty" class="sub">Очередь пуста</div>
+            <ul id="queueList" class="queueList"></ul>
           </div>
+        </div>
+      </section>
 
-          <div id="barcodeNotScanningDetails" class="field full" hidden>
-            <span>ШК не сканируется — причина</span>
-            <select name="barcode_not_scanning_reason">
-              <option value="" selected disabled>Выберите...</option>
-              <option value="physical">Физически</option>
-              <option value="wrong_product">Пишет не верный товар (нет в справочнике)</option>
-            </select>
+      <section id="personalCabinetScreen" class="screen" style="display:none">
+        <div class="card">
+          <div class="labelRow">
+            <div style="font-weight:800">Личный кабинет</div>
+            <button type="button" class="header-btn" onclick="showMainApp()">К форме</button>
           </div>
-
-          <label class="field full">
-            <span>Фото: ШК Коробки (обязательно)</span>
-            <input id="photoBarcodeBox" name="photo_barcode_box" type="file" accept="image/*" required />
-          </label>
-
-          <label id="photoBarcodeBlockWrap" class="field full" hidden>
-            <span>Фото: Блок (если есть блок)</span>
-            <input id="photoBarcodeBlock" name="photo_barcode_block" type="file" accept="image/*" />
-          </label>
-
-          <label class="field full">
-            <span>Фото: ШК Штуки (обязательно)</span>
-            <input id="photoBarcodeItem" name="photo_barcode_item" type="file" accept="image/*" required />
-          </label>
-
-          <label class="field full">
-            <span>Фото: Общий вид коробки (обязательно)</span>
-            <input id="photoBoxOverall" name="photo_box_overall" type="file" accept="image/*" required />
-          </label>
-
-          <label class="field full">
-            <span>Вложения коробки (обязательно)</span>
-            <input id="boxAttachments" name="box_attachments" type="file" multiple accept="image/*,video/*" required />
-            <small id="filesHint" class="hint"></small>
-          </label>
-
-          <label class="field full">
-            <span>💬 Комментарий</span>
-            <textarea name="comment" rows="4" placeholder="Дополнительные детали"></textarea>
-          </label>
+          <div id="requestsList" class="requests-list" style="margin-top:12px"></div>
         </div>
+      </section>
 
-        <div class="actions">
-          <button id="submitBtn" type="submit">
-            <span class="btnText">Отправить</span>
-            <span class="btnSpinner" aria-hidden="true"></span>
-          </button>
+      <section id="adminCabinetScreen" class="screen" style="display:none">
+        <div class="card">
+          <div class="labelRow"><div style="font-weight:800">Админский кабинет</div></div>
+          <div class="admin-stats">
+            <div class="request-item"><div class="request-meta">Всего заявок</div><div id="totalRequests" class="request-id">0</div></div>
+            <div class="request-item"><div class="request-meta">Новых</div><div id="newRequests" class="request-id">0</div></div>
+            <div class="request-item"><div class="request-meta">В работе</div><div id="inProgressRequests" class="request-id">0</div></div>
+          </div>
+          <div id="adminRequestsList" class="admin-requests-list"></div>
         </div>
+      </section>
 
-        <div id="status" class="status" aria-live="polite"></div>
-
-        <div class="actions">
-          <button id="installBtn" type="button" class="secondary" hidden>Установить приложение</button>
-        </div>
-      </form>
-    </section>
-
-    <!-- Personal Cabinet Screen -->
-    <section id="personalCabinetScreen" class="card screen" style="display: none;">
-      <h2>👤 Личный кабинет</h2>
-      <div id="userInfo" class="user-info"></div>
-      <div class="cabinet-tabs">
-        <button class="tab-btn active" data-tab="requests">Мои заявки</button>
-        <button class="tab-btn" data-tab="drafts">Черновики</button>
-      </div>
-      <div id="requestsTab" class="tab-content active">
-        <h3>История заявок</h3>
-        <div id="requestsList" class="requests-list"></div>
-      </div>
-      <div id="draftsTab" class="tab-content">
-        <h3>Черновики</h3>
-        <div id="draftsList" class="drafts-list"></div>
-      </div>
-    </section>
-
-    <!-- Admin Cabinet Screen -->
-    <section id="adminCabinetScreen" class="card screen" style="display: none;">
-      <h2>🛠️ Админский кабинет</h2>
-      <div class="admin-stats">
-        <div class="stat-card">
-          <h3>Всего заявок</h3>
-          <span id="totalRequests">0</span>
-        </div>
-        <div class="stat-card">
-          <h3>Новых заявок</h3>
-          <span id="newRequests">0</span>
-        </div>
-        <div class="stat-card">
-          <h3>В работе</h3>
-          <span id="inProgressRequests">0</span>
+      <div id="successModal" hidden>
+        <div class="card">
+          <div class="labelRow">
+            <div style="font-weight:800">Готово</div>
+            <button data-action="close" type="button" class="header-btn">Закрыть</button>
+          </div>
+          <p class="sub">Заявка отправлена.</p>
+          <button id="successModalOkBtn" type="button">OK</button>
         </div>
       </div>
-      <div class="admin-filters">
-        <select id="statusFilter">
-          <option value="all">Все статусы</option>
-          <option value="new">Новые</option>
-          <option value="in_progress">В работе</option>
-          <option value="completed">Завершенные</option>
-          <option value="rejected">Отклоненные</option>
-        </select>
-        <input type="text" id="searchFilter" placeholder="Поиск по заявкам...">
-      </div>
-      <div id="adminRequestsList" class="admin-requests-list"></div>
-    </section>
 
-    <!-- Request Detail Modal -->
-    <div id="requestDetailModal" class="modal" hidden>
-      <div class="modalBackdrop" data-action="close"></div>
-      <div class="modalCard" role="dialog" aria-modal="true">
-        <div class="modalTitle">Детали заявки</div>
-        <div class="modalBody" id="requestDetailBody"></div>
-        <div class="modalActions" id="requestDetailFooter"></div>
-      </div>
+      <div id="toastHost" class="toastHost"></div>
     </div>
 
-    <section class="card queueCard" aria-label="Очередь отправки">
-      <div class="queueHeader">
-        <div class="queueTitle">Очередь</div>
-        <button id="flushQueueBtn" type="button" class="secondary">Отправить очередь</button>
-      </div>
-      <div id="queueEmpty" class="hint">Очередь пуста</div>
-      <ul id="queueList" class="queueList"></ul>
-    </section>
-
-    <footer class="footer">
-      <span id="offlineBadge" class="badge" hidden>Оффлайн</span>
-    </footer>
-  </main>
-
-  <div id="successModal" class="modal" hidden>
-    <div class="modalBackdrop" data-action="close"></div>
-    <div class="modalCard" role="dialog" aria-modal="true" aria-label="Успешно">
-      <div class="modalTitle">Отправлено успешно</div>
-      <div class="modalBody">Заявка отправлена.</div>
-      <div class="modalActions">
-        <button id="successModalOkBtn" type="button" class="secondary">ОК</button>
-      </div>
-    </div>
-  </div>
-
-  <script src="./app.js" type="module"></script>
-</body>
+    <script src="./app.js"></script>
+  </body>
 </html>
