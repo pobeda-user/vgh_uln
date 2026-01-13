@@ -13,7 +13,7 @@ const showRegistrationBtn = document.getElementById('showRegistrationBtn');
 
 // Original elements
 const statusEl = document.getElementById('status');
-const formEl = document.getElementById('requestForm');
+const formEl = document.querySelector('form#requestForm') || document.getElementById('requestForm');
 const filesHintEl = document.getElementById('filesHint');
 const submitBtn = document.getElementById('submitBtn');
 const installBtn = document.getElementById('installBtn');
@@ -119,7 +119,7 @@ function showScreen(screenId) {
 }
 
 function showMainApp() {
-  showScreen('requestForm');
+  showScreen('requestFormScreen');
   mainHeader.style.display = 'block';
   setMainUiVisible_(true);
   updateHeaderUser_();
@@ -478,6 +478,12 @@ function showRequestDetail(requestId) {
   document.body.classList.add('modalOpen');
   console.debug('[pwa] showRequestDetail', { id, req });
 }
+
+try {
+  // Required because request cards use inline onclick="showRequestDetail('...')"
+  // and in some hosting modes (module / bundlers) top-level functions are not on window.
+  window.showRequestDetail = showRequestDetail;
+} catch (_) {}
 
 function closeRequestDetail_() {
   const modal = document.getElementById('requestDetailModal');
