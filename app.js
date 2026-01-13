@@ -42,6 +42,71 @@ let currentRequestId_ = '';
 let currentUser = null;
 let isAdmin = false;
 
+// Last loaded requests cache (for details modal)
+let lastRequestsById_ = new Map();
+
+function ensureHeaderControls_() {
+  try {
+    if (!mainHeader) return;
+
+    // Try to find a reasonable place to put header controls.
+    // Prefer .header-content if present, else mainHeader itself.
+    const host = mainHeader.querySelector('.header-content') || mainHeader;
+
+    // User name placeholder
+    if (!document.getElementById('headerUserName')) {
+      const nameEl = document.createElement('span');
+      nameEl.id = 'headerUserName';
+      nameEl.style.fontWeight = '700';
+      nameEl.style.color = 'var(--text)';
+      nameEl.style.marginRight = '12px';
+      host.appendChild(nameEl);
+    }
+
+    // Logout button
+    if (!document.getElementById('logoutBtn')) {
+      const btn = document.createElement('button');
+      btn.id = 'logoutBtn';
+      btn.type = 'button';
+      btn.className = 'header-btn';
+      btn.textContent = 'Выход';
+      btn.addEventListener('click', logout);
+      host.appendChild(btn);
+    }
+  } catch (_) {}
+}
+
+function updateHeaderUser_() {
+  try {
+    ensureHeaderControls_();
+
+    // Optional DOM nodes (may or may not exist depending on HTML version)
+    const userNameEl = document.getElementById('headerUserName');
+    if (userNameEl) {
+      const fio = currentUser && currentUser.fio ? String(currentUser.fio) : '';
+      userNameEl.textContent = fio;
+      userNameEl.hidden = !fio;
+    }
+
+    const logoutEl = document.getElementById('logoutBtn');
+    if (logoutEl) logoutEl.hidden = !currentUser;
+
+    const personalBtn = document.getElementById('personalCabinetBtn');
+    if (personalBtn) personalBtn.hidden = !currentUser || isAdmin;
+  } catch (_) {}
+}
+
+function setMainUiVisible_(visible) {
+  // "main" here means the request form card
+  try {
+    const card = document.querySelector('.card');
+    if (card) card.style.display = visible ? 'block' : 'none';
+  } catch (_) {}
+  try {
+    if (formEl) formEl.style.display = visible ? 'block' : 'none';
+  } catch (_) {}
+}
+
 // Screen management
 function showScreen(screenId) {
   const screens = document.querySelectorAll('.screen');
@@ -56,13 +121,15 @@ function showScreen(screenId) {
 function showMainApp() {
   showScreen('requestForm');
   mainHeader.style.display = 'block';
-  document.querySelector('.card').style.display = 'block';
+  setMainUiVisible_(true);
+  updateHeaderUser_();
 }
 
 function showAuth() {
   mainHeader.style.display = 'none';
-  document.querySelector('.card').style.display = 'none';
+  setMainUiVisible_(false);
   showLogin(); // Только вход, регистрация через Telegram
+  updateHeaderUser_();
 }
 
 function showRegistration() {
@@ -76,17 +143,23 @@ function showLogin() {
 function showPersonalCabinet() {
   showScreen('personalCabinetScreen');
   loadUserRequests();
+  updateHeaderUser_();
 }
 
 function showAdminCabinet() {
   showScreen('adminCabinetScreen');
+  // Admin should not see VGH submission form
+  setMainUiVisible_(false);
+  if (mainHeader) mainHeader.style.display = 'block';
   loadAdminData();
+  updateHeaderUser_();
 }
 
 function logout() {
   currentUser = null;
   isAdmin = false;
   localStorage.removeItem('currentUser');
+  localStorage.removeItem('isAdmin');
   showAuth();
 }
 
@@ -178,9 +251,15 @@ async function login(credentials) {
       isAdmin = result.isAdmin || false;
       localStorage.setItem('currentUser', JSON.stringify(currentUser));
       localStorage.setItem('isAdmin', isAdmin.toString());
+
+      console.debug('[auth] login ok', {
+        isAdmin,
+        user: currentUser
+      });
       
       toast_('Вход выполнен успешно!');
-      showMainApp();
+      if (isAdmin) showAdminCabinet();
+      else showMainApp();
       return true;
     } else {
       throw new Error(result.error || 'Ошибка входа');
@@ -198,6 +277,11 @@ function checkAuthStatus() {
   if (savedUser) {
     currentUser = JSON.parse(savedUser);
     isAdmin = savedAdmin === 'true';
+
+    console.debug('[auth] restored session', {
+      isAdmin,
+      user: currentUser
+    });
     
     if (isAdmin) {
       showAdminCabinet();
@@ -214,6 +298,7 @@ async function loadUserRequests() {
   if (!currentUser) return;
   
   try {
+    console.debug('[pwa] loadUserRequests start', { userId: currentUser.id, user: currentUser });
     // Используем JSONP подход для обхода CORS
     const callbackName = 'jsonpCallback_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
     
@@ -244,6 +329,7 @@ async function loadUserRequests() {
     });
     
     if (result.success) {
+      console.debug('[pwa] loadUserRequests ok', { count: (result.requests || []).length });
       displayRequests(result.requests, 'requestsList');
     } else {
       toast_(result.error || 'Ошибка загрузки заявок', { type: 'error' });
@@ -256,6 +342,7 @@ async function loadUserRequests() {
 // Load admin data
 async function loadAdminData() {
   try {
+    console.debug('[pwa] loadAdminData start');
     // Используем JSONP подход для обхода CORS
     const callbackName = 'jsonpCallback_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
     
@@ -285,6 +372,10 @@ async function loadAdminData() {
     });
     
     if (result.success) {
+      console.debug('[pwa] loadAdminData ok', {
+        stats: result.stats,
+        requestsCount: (result.requests || []).length
+      });
       displayAdminStats(result.stats);
       displayRequests(result.requests, 'adminRequestsList');
     } else {
@@ -298,6 +389,14 @@ async function loadAdminData() {
 function displayRequests(requests, containerId) {
   const container = document.getElementById(containerId);
   if (!container) return;
+
+  // cache for details
+  try {
+    lastRequestsById_.clear();
+    (requests || []).forEach((r) => {
+      if (r && r.id != null) lastRequestsById_.set(String(r.id), r);
+    });
+  } catch (_) {}
   
   if (requests.length === 0) {
     container.innerHTML = '<p class="hint">Заявок пока нет</p>';
@@ -338,8 +437,94 @@ function getStatusText(status) {
 }
 
 function showRequestDetail(requestId) {
-  // TODO: Implement request detail modal
-  toast_('Детали заявки #' + requestId);
+  const id = String(requestId || '');
+  const req = lastRequestsById_.get(id);
+  if (!req) {
+    toast_('Не удалось найти данные заявки #' + id, { type: 'error' });
+    return;
+  }
+
+  const modal = ensureRequestDetailModal_();
+  if (!modal) {
+    toast_('Не удалось открыть детали заявки', { type: 'error' });
+    return;
+  }
+
+  const titleEl = modal.querySelector('[data-role="title"]');
+  const bodyEl = modal.querySelector('[data-role="body"]');
+  if (titleEl) titleEl.textContent = `Заявка #${id}`;
+
+  const lines = [];
+  const add = (label, value) => {
+    const v = value == null ? '' : String(value);
+    if (!v) return;
+    lines.push(`<div class="rdRow"><span class="rdLabel">${escapeHtml_(label)}</span><span class="rdValue">${escapeHtml_(v)}</span></div>`);
+  };
+
+  add('Статус', getStatusText(req.status));
+  add('Поставщик', req.supplier);
+  add('Товар', req.productName || 'Без названия');
+  add('Дата', req.createdAt ? new Date(req.createdAt).toLocaleString() : '');
+  add('Комментарий', req.comment);
+
+  // If backend later provides more fields, show them too
+  if (req.details && typeof req.details === 'object') {
+    Object.keys(req.details).forEach((k) => add(k, req.details[k]));
+  }
+
+  if (bodyEl) bodyEl.innerHTML = lines.join('') || '<div class="rdEmpty">Нет данных для отображения</div>';
+
+  modal.hidden = false;
+  document.body.classList.add('modalOpen');
+  console.debug('[pwa] showRequestDetail', { id, req });
+}
+
+function closeRequestDetail_() {
+  const modal = document.getElementById('requestDetailModal');
+  if (!modal) return;
+  modal.hidden = true;
+  document.body.classList.remove('modalOpen');
+}
+
+function ensureRequestDetailModal_() {
+  let modal = document.getElementById('requestDetailModal');
+  if (modal) return modal;
+
+  modal = document.createElement('div');
+  modal.id = 'requestDetailModal';
+  modal.hidden = true;
+  modal.style.position = 'fixed';
+  modal.style.inset = '0';
+  modal.style.background = 'rgba(0,0,0,.55)';
+  modal.style.zIndex = '9999';
+  modal.style.display = 'grid';
+  modal.style.placeItems = 'center';
+  modal.innerHTML = `
+    <div style="width:min(720px,calc(100vw - 24px));max-height:calc(100vh - 24px);overflow:auto;background:rgba(11,16,34,.98);border:1px solid rgba(255,255,255,.16);border-radius:16px;padding:16px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px">
+        <div data-role="title" style="font-weight:800;letter-spacing:.2px">Заявка</div>
+        <button data-action="close" class="header-btn" type="button">Закрыть</button>
+      </div>
+      <div data-role="body"></div>
+    </div>
+  `;
+
+  modal.addEventListener('click', (e) => {
+    const t = e.target;
+    if (!t) return;
+    if (t.getAttribute && t.getAttribute('data-action') === 'close') {
+      closeRequestDetail_();
+      return;
+    }
+    // click outside card closes
+    if (t === modal) closeRequestDetail_();
+  });
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeRequestDetail_();
+  });
+
+  document.body.appendChild(modal);
+  return modal;
 }
 
 const CONFIG = {
